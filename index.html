@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>三国模拟人生</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:#1c1a17; color:#eee; }
+  #app { display:flex; flex-direction:column; height:100vh; }
+  header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#2b2620; border-bottom:1px solid #443c33; }
+  header h1 { font-size:18px; margin:0; color:#d9b26b; }
+  #toolbar button { margin-left:6px; padding:6px 10px; font-size:12px; background:#443c33; color:#eee; border:none; border-radius:6px; }
+  #chatWindow { flex:1; overflow-y:auto; padding:12px; }
+  .msg { margin-bottom:12px; padding:10px 12px; border-radius:10px; line-height:1.6; white-space:pre-wrap; max-width:90%; }
+  .msg.user { background:#3a4a3a; margin-left:auto; }
+  .msg.assistant { background:#2f2b26; border:1px solid #443c33; }
+  .msg.thinking { color:#999; font-style:italic; }
+  #inputArea { display:flex; padding:10px; background:#2b2620; border-top:1px solid #443c33; }
+  #userInput { flex:1; min-height:44px; max-height:120px; padding:10px; border-radius:8px; border:none; background:#1c1a17; color:#eee; resize:none; }
+  #sendBtn { margin-left:8px; padding:0 18px; background:#d9b26b; color:#1c1a17; border:none; border-radius:8px; font-weight:bold; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>三国模拟人生</h1>
+    <div id="toolbar">
+      <button id="exportBtn">导出存档</button>
+      <button id="resetBtn">重置</button>
+    </div>
+  </header>
+  <div id="chatWindow"></div>
+  <div id="inputArea">
+    <textarea id="userInput" placeholder="输入你的行动或对话,留空直接发送可让剧情自动推进"></textarea>
+    <button id="sendBtn">发送</button>
+  </div>
+</div>
+<script>
+const SYSTEM_PROMPT = `你是一个三国题材沉浸式文字模拟游戏的主持人(GM)。规则:
+1. 视角人物由玩家指定或随机生成,可以是刘备、诸葛亮这类真实历史人物,也可以是普通难民、士兵等虚构小人物。
+2. 历史可被玩家的选择改写,存在"蝴蝶效应":玩家在关键事件上的决策会持续影响后续剧情、势力格局与人物关系,不会被剧情自动纠正回"正史"。
+3. 叙事风格不设特定文风限制,自然流畅表达即可。
+4. 保持高自由度:玩家可以随时脱离主线,与在场的任意NPC(如诸葛亮、周瑜等)展开不限轮次的深入对话或"思想"探讨(哲学、政治理念等),不强制每一轮都推进主线剧情。
+5. 输入以自由文本为主;在面临重大抉择的节点,可以在叙述末尾额外提供2-4个选项供参考,但玩家仍可以完全不理会这些选项、自由输入。
+6. 政务系统需覆盖屯田粮草(军粮储备)、后勤器械等具体子项,相关数值变化要体现在叙事中。
+现在,请引导玩家选择或生成一个视角人物,并正式开始游戏。`;
+
+let messages = [];
+let chatWindow, userInput;
+
+function loadState() {
+  const saved = localStorage.getItem('sanguo_save');
+  if (saved) {
+    try { messages = JSON.parse(saved); } catch(e) { messages = []; }
+  }
+  if (!messages || messages.length === 0) {
+    messages = [{role: 'system', content: SYSTEM_PROMPT}];
+  }
+}
+
+function saveState() {
+  localStorage.setItem('sanguo_save', JSON.stringify(messages));
+}
+
+function renderMessages() {
+  chatWindow.innerHTML = '';
+  messages.forEach(m => {
+    if (m.role === 'system') return;
+    const div = document.createElement('div');
+    div.className = 'msg ' + m.role;
+    div.textContent = (m.role === 'user' ? '你: ' : '') + m.content;
+    chatWindow.appendChild(div);
+  });
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+async function sendMessage(text) {
+  messages.push({role: 'user', content: text.trim() ? text : '(继续推进剧情)'});
+  renderMessages();
+  saveState();
+
+  const thinkingDiv = document.createElement('div');
+  thinkingDiv.className = 'msg assistant thinking';
+  thinkingDiv.textContent = '……思考中……';
+  chatWindow.appendChild(thinkingDiv);
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({messages})
+    });
+    const data = await res.json();
+    let reply = '(未获取到有效回复,请稍后重试)';
+    if (data && data.choices && data.choices[0] && data.choices[0].message) {
+      reply = data.choices[0].message.content;
+    } else if (data && data.error) {
+      reply = '出错了:' + JSON.stringify(data.error);
+    }
+    messages.push({role: 'assistant', content: reply});
+    saveState();
+    renderMessages();
+  } catch (err) {
+    thinkingDiv.textContent = '网络错误:' + err.message;
+  }
+}
+
+window.onload = function() {
+  chatWindow = document.getElementById('chatWindow');
+  userInput = document.getElementById('userInput');
+  loadState();
+  renderMessages();
+
+  document.getElementById('sendBtn').onclick = () => {
+    const text = userInput.value;
+    userInput.value = '';
+    sendMessage(text);
+  };
+
+  document.getElementById('resetBtn').onclick = () => {
+    if (confirm('确定要清空当前存档、重新开始吗?')) {
+      messages = [{role: 'system', content: SYSTEM_PROMPT}];
+      saveState();
+      renderMessages();
+    }
+  };
+
+  document.getElementById('exportBtn').onclick = () => {
+    const text = JSON.stringify(messages, null, 2);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => alert('存档已复制到剪贴板'));
+    } else {
+      prompt('请手动复制以下存档内容:', text);
+    }
+  };
+};
+</script>
+</body>
+</html>
