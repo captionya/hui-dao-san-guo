@@ -6,19 +6,47 @@
 <title>三国模拟人生</title>
 <style>
   * { box-sizing: border-box; }
-  body { margin:0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:#1c1a17; color:#eee; }
+
+  :root {
+    --bg: #1c1a17;
+    --text: #eee;
+    --header-bg: #2b2620;
+    --border: #443c33;
+    --accent: #d9b26b;
+    --user-color: #9fd39f;
+    --input-bg: #1c1a17;
+    --btn-bg: #443c33;
+    --btn-text: #eee;
+    --tag-color: #d9b26b;
+  }
+
+  body.theme-scroll {
+    --bg: #e8d9b5;
+    --text: #4a3520;
+    --header-bg: #dfc998;
+    --border: #c2a877;
+    --accent: #8a5a2b;
+    --user-color: #5c7a4a;
+    --input-bg: #f3e6c8;
+    --btn-bg: #c2a877;
+    --btn-text: #3a2a14;
+    --tag-color: #8a5a2b;
+  }
+
+  body { margin:0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); }
   #app { display:flex; flex-direction:column; height:100vh; }
-  header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#2b2620; border-bottom:1px solid #443c33; }
-  header h1 { font-size:18px; margin:0; color:#d9b26b; }
-  #toolbar button { margin-left:6px; padding:6px 10px; font-size:12px; background:#443c33; color:#eee; border:none; border-radius:6px; }
-  #chatWindow { flex:1; overflow-y:auto; padding:12px; }
-  .msg { margin-bottom:12px; padding:10px 12px; border-radius:10px; line-height:1.6; white-space:pre-wrap; max-width:90%; }
-  .msg.user { background:#3a4a3a; margin-left:auto; }
-  .msg.assistant { background:#2f2b26; border:1px solid #443c33; }
-  .msg.thinking { color:#999; font-style:italic; }
-  #inputArea { display:flex; padding:10px; background:#2b2620; border-top:1px solid #443c33; }
-  #userInput { flex:1; min-height:44px; max-height:120px; padding:10px; border-radius:8px; border:none; background:#1c1a17; color:#eee; resize:none; }
-  #sendBtn { margin-left:8px; padding:0 18px; background:#d9b26b; color:#1c1a17; border:none; border-radius:8px; font-weight:bold; }
+  header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--header-bg); border-bottom:1px solid var(--border); }
+  header h1 { font-size:18px; margin:0; color:var(--accent); }
+  #toolbar button { margin-left:6px; padding:6px 10px; font-size:12px; background:var(--btn-bg); color:var(--btn-text); border:none; border-radius:6px; }
+  #chatWindow { flex:1; overflow-y:auto; padding:16px; }
+  .msg { margin-bottom:20px; line-height:1.8; white-space:pre-wrap; }
+  .msg.user { color:var(--user-color); }
+  .msg.assistant { color:var(--text); }
+  .msg .thinking { color:#999; font-style:italic; }
+  .tag { font-style:italic; color:var(--tag-color); }
+  #inputArea { display:flex; padding:10px; background:var(--header-bg); border-top:1px solid var(--border); }
+  #userInput { flex:1; min-height:44px; max-height:120px; padding:10px; border-radius:8px; border:none; background:var(--input-bg); color:var(--text); resize:none; }
+  #sendBtn { margin-left:8px; padding:0 18px; background:var(--accent); color:var(--bg); border:none; border-radius:8px; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -26,6 +54,7 @@
   <header>
     <h1>三国模拟人生</h1>
     <div id="toolbar">
+      <button id="themeBtn">卷轴模式</button>
       <button id="exportBtn">导出存档</button>
       <button id="resetBtn">重置</button>
     </div>
@@ -44,6 +73,7 @@ const SYSTEM_PROMPT = `你是一个三国题材沉浸式文字模拟游戏的主
 4. 保持高自由度:玩家可以随时脱离主线,与在场的任意NPC(如诸葛亮、周瑜等)展开不限轮次的深入对话或"思想"探讨(哲学、政治理念等),不强制每一轮都推进主线剧情。
 5. 输入以自由文本为主;在面临重大抉择的节点,可以在叙述末尾额外提供2-4个选项供参考,但玩家仍可以完全不理会这些选项、自由输入。
 6. 政务系统需覆盖屯田粮草(军粮储备)、后勤器械等具体子项,相关数值变化要体现在叙事中。
+7. 尽量避免使用星号、下划线等 Markdown 符号来标记文字(比如用*文字*表示强调或身份),直接用自然语言体现语气、身份与状态即可。
 现在,请引导玩家选择或生成一个视角人物,并正式开始游戏。`;
 
 let messages = [];
@@ -63,28 +93,62 @@ function saveState() {
   localStorage.setItem('sanguo_save', JSON.stringify(messages));
 }
 
+function loadTheme() {
+  const theme = localStorage.getItem('sanguo_theme');
+  if (theme === 'scroll') {
+    document.body.classList.add('theme-scroll');
+  }
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('theme-scroll');
+  localStorage.setItem('sanguo_theme', document.body.classList.contains('theme-scroll') ? 'scroll' : 'dark');
+}
+
+function escapeHTML(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// 把 *文字* 转成带样式的强调片段,而不是原样显示星号
+function formatContent(text) {
+  let escaped = escapeHTML(text);
+  escaped = escaped.replace(/\*(.+?)\*/g, '<em class="tag">$1</em>');
+  return escaped;
+}
+
+function appendMessageDiv(m) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + m.role;
+  const prefix = m.role === 'user' ? '你: ' : '';
+  div.innerHTML = prefix + formatContent(m.content);
+  chatWindow.appendChild(div);
+  return div;
+}
+
 function renderMessages() {
   chatWindow.innerHTML = '';
   messages.forEach(m => {
     if (m.role === 'system') return;
-    const div = document.createElement('div');
-    div.className = 'msg ' + m.role;
-    div.textContent = (m.role === 'user' ? '你: ' : '') + m.content;
-    chatWindow.appendChild(div);
+    appendMessageDiv(m);
   });
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
 async function sendMessage(text) {
-  messages.push({role: 'user', content: text.trim() ? text : '(继续推进剧情)'});
-  renderMessages();
+  const userMsg = {role: 'user', content: text.trim() ? text : '(继续推进剧情)'};
+  messages.push(userMsg);
+  appendMessageDiv(userMsg);
   saveState();
 
-  const thinkingDiv = document.createElement('div');
-  thinkingDiv.className = 'msg assistant thinking';
-  thinkingDiv.textContent = '……思考中……';
-  chatWindow.appendChild(thinkingDiv);
-  chatWindow.scrollTop = chatWindow.scrollHeight;
+  const assistantDiv = document.createElement('div');
+  assistantDiv.className = 'msg assistant';
+  assistantDiv.innerHTML = '<span class="thinking">……思考中……</span>';
+  chatWindow.appendChild(assistantDiv);
+  // 新回复开始时,把这条消息的顶部固定到可视区域顶端,而不是滚到最底部
+  assistantDiv.scrollIntoView({block: 'start'});
+
+  let fullText = '';
+  let started = false;
 
   try {
     const res = await fetch('/api/chat', {
@@ -92,24 +156,55 @@ async function sendMessage(text) {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({messages})
     });
-    const data = await res.json();
-    let reply = '(未获取到有效回复,请稍后重试)';
-    if (data && data.choices && data.choices[0] && data.choices[0].message) {
-      reply = data.choices[0].message.content;
-    } else if (data && data.error) {
-      reply = '出错了:' + JSON.stringify(data.error);
+
+    if (!res.ok || !res.body) {
+      let errInfo = '';
+      try { errInfo = JSON.stringify(await res.json()); } catch(e) {}
+      assistantDiv.innerHTML = formatContent('出错了:' + (errInfo || res.status));
+      return;
     }
-    messages.push({role: 'assistant', content: reply});
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // 最后一行可能不完整,留到下一块再拼
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = trimmed.slice(5).trim();
+        if (payload === '[DONE]' || payload === '') continue;
+        try {
+          const json = JSON.parse(payload);
+          const delta = json.choices && json.choices[0] && json.choices[0].delta;
+          const piece = delta && delta.content;
+          if (piece) {
+            if (!started) { started = true; }
+            fullText += piece;
+            assistantDiv.innerHTML = formatContent(fullText);
+          }
+        } catch (e) { /* 跳过暂时无法解析的分片 */ }
+      }
+    }
+
+    if (!fullText) fullText = '(未获取到有效回复,请稍后重试)';
+    messages.push({role: 'assistant', content: fullText});
     saveState();
-    renderMessages();
   } catch (err) {
-    thinkingDiv.textContent = '网络错误:' + err.message;
+    assistantDiv.innerHTML = formatContent('网络错误:' + err.message);
   }
 }
 
 window.onload = function() {
   chatWindow = document.getElementById('chatWindow');
   userInput = document.getElementById('userInput');
+  loadTheme();
   loadState();
   renderMessages();
 
@@ -118,6 +213,8 @@ window.onload = function() {
     userInput.value = '';
     sendMessage(text);
   };
+
+  document.getElementById('themeBtn').onclick = toggleTheme;
 
   document.getElementById('resetBtn').onclick = () => {
     if (confirm('确定要清空当前存档、重新开始吗?')) {
