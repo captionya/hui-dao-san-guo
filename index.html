@@ -4,8 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>三国模拟人生</title>
+
 <style>
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
   :root {
     --bg: #1c1a17;
@@ -18,6 +21,8 @@
     --btn-bg: #443c33;
     --btn-text: #eee;
     --tag-color: #d9b26b;
+    --error-color: #e58c8c;
+    --muted: #999;
   }
 
   body.theme-scroll {
@@ -31,208 +36,1108 @@
     --btn-bg: #c2a877;
     --btn-text: #3a2a14;
     --tag-color: #8a5a2b;
+    --error-color: #a33a2f;
+    --muted: #806f58;
   }
 
-  body { margin:0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:var(--bg); color:var(--text); }
-  #app { display:flex; flex-direction:column; height:100vh; }
-  header { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--header-bg); border-bottom:1px solid var(--border); }
-  header h1 { font-size:18px; margin:0; color:var(--accent); }
-  #toolbar button { margin-left:6px; padding:6px 10px; font-size:12px; background:var(--btn-bg); color:var(--btn-text); border:none; border-radius:6px; }
-  #chatWindow { flex:1; overflow-y:auto; padding:16px; }
-  .msg { margin-bottom:20px; line-height:1.8; white-space:pre-wrap; }
-  .msg.user { color:var(--user-color); }
-  .msg.assistant { color:var(--text); }
-  .msg .thinking { color:#999; font-style:italic; }
-  .tag { font-style:italic; color:var(--tag-color); }
-  #inputArea { display:flex; padding:10px; background:var(--header-bg); border-top:1px solid var(--border); }
-  #userInput { flex:1; min-height:44px; max-height:120px; padding:10px; border-radius:8px; border:none; background:var(--input-bg); color:var(--text); resize:none; }
-  #sendBtn { margin-left:8px; padding:0 18px; background:var(--accent); color:var(--bg); border:none; border-radius:8px; font-weight:bold; }
+  body {
+    margin: 0;
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      "PingFang SC",
+      "Microsoft YaHei",
+      sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  header h1 {
+    font-size: 18px;
+    margin: 0;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  #toolbar button,
+  #modelSelect {
+    padding: 6px 9px;
+    font-size: 12px;
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: none;
+    border-radius: 6px;
+  }
+
+  #modelSelect {
+    border: 1px solid var(--border);
+    outline: none;
+  }
+
+  #modelSelect:disabled,
+  #toolbar button:disabled {
+    opacity: 0.5;
+  }
+
+  #chatWindow {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .msg {
+    margin-bottom: 20px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .msg.user {
+    color: var(--user-color);
+  }
+
+  .msg.assistant {
+    color: var(--text);
+  }
+
+  .msg .thinking {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .msg.error {
+    color: var(--error-color);
+  }
+
+  #inputArea {
+    display: flex;
+    padding: 10px;
+    gap: 8px;
+    background: var(--header-bg);
+    border-top: 1px solid var(--border);
+  }
+
+  #userInput {
+    flex: 1;
+    min-height: 44px;
+    max-height: 120px;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    background: var(--input-bg);
+    color: var(--text);
+    resize: none;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  #userInput::placeholder {
+    color: var(--muted);
+  }
+
+  #sendBtn {
+    padding: 0 18px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    min-width: 64px;
+  }
+
+  #sendBtn:disabled {
+    opacity: 0.5;
+  }
+
+  @media (max-width: 600px) {
+    header {
+      align-items: flex-start;
+    }
+
+    header h1 {
+      font-size: 16px;
+      padding-top: 5px;
+    }
+
+    #toolbar {
+      max-width: 70%;
+    }
+
+    #toolbar button,
+    #modelSelect {
+      font-size: 11px;
+      padding: 5px 7px;
+    }
+
+    #chatWindow {
+      padding: 14px 12px;
+    }
+
+    #inputArea {
+      padding: 8px;
+    }
+
+    #sendBtn {
+      padding: 0 14px;
+    }
+  }
 </style>
 </head>
+
 <body>
+
 <div id="app">
+
   <header>
+
     <h1>三国模拟人生</h1>
+
     <div id="toolbar">
+
+      <select id="modelSelect" title="选择 AI 模型">
+        <option value="deepseek-flash">Flash</option>
+        <option value="deepseek-v4-pro">Pro</option>
+      </select>
+
       <button id="themeBtn">卷轴模式</button>
+
       <button id="exportBtn">导出存档</button>
+
       <button id="resetBtn">重置</button>
+
     </div>
+
   </header>
+
   <div id="chatWindow"></div>
+
   <div id="inputArea">
-    <textarea id="userInput" placeholder="输入你的行动或对话,留空直接发送可让剧情自动推进"></textarea>
+
+    <textarea
+      id="userInput"
+      placeholder="输入你的行动或对话，留空直接发送可让剧情自动推进"
+    ></textarea>
+
     <button id="sendBtn">发送</button>
+
   </div>
+
 </div>
+
 <script>
-const SYSTEM_PROMPT = `你是一个三国题材沉浸式文字模拟游戏的主持人(GM)。规则:
-1. 视角人物由玩家指定或随机生成,可以是刘备、诸葛亮这类真实历史人物,也可以是普通难民、士兵等虚构小人物。
-2. 历史可被玩家的选择改写,存在"蝴蝶效应":玩家在关键事件上的决策会持续影响后续剧情、势力格局与人物关系,不会被剧情自动纠正回"正史"。
-3. 叙事风格不设特定文风限制,自然流畅表达即可。
-4. 保持高自由度:玩家可以随时脱离主线,与在场的任意NPC(如诸葛亮、周瑜等)展开不限轮次的深入对话或"思想"探讨(哲学、政治理念等),不强制每一轮都推进主线剧情。
-5. 输入以自由文本为主;在面临重大抉择的节点,可以在叙述末尾额外提供2-4个选项供参考,但玩家仍可以完全不理会这些选项、自由输入。
-6. 政务系统需覆盖屯田粮草(军粮储备)、后勤器械等具体子项,相关数值变化要体现在叙事中。
-7. 尽量避免使用星号、下划线等 Markdown 符号来标记文字(比如用*文字*表示强调或身份),直接用自然语言体现语气、身份与状态即可。
-现在,请引导玩家选择或生成一个视角人物,并正式开始游戏。`;
+
+const SYSTEM_PROMPT = `你是一个三国题材沉浸式文字模拟游戏的主持人(GM)。
+
+游戏规则：
+
+1. 视角人物由玩家指定或随机生成，可以是刘备、诸葛亮这类真实历史人物，也可以是普通难民、士兵、商人、农民等虚构小人物。
+
+2. 历史可以被玩家的选择改写，存在“蝴蝶效应”：
+玩家在关键事件上的决策会持续影响后续剧情、势力格局、人物关系与历史走向，不要为了强行回到正史而否定玩家已经造成的改变。
+
+3. 叙事风格自然、流畅、沉浸，不需要刻意模仿古文。
+
+4. 保持高自由度：
+玩家可以随时脱离主线，与在场的任意NPC展开不限轮次的深入对话。
+NPC可以讨论政治、战争、理想、人生、权力、忠诚、利益等思想问题。
+不要强迫每一轮都推进主线剧情。
+
+5. 玩家输入以自由文本为主。
+当玩家面对重大决策时，可以在叙述末尾提供2-4个参考选项，但玩家完全可以无视这些选项，自由输入自己的行动。
+
+6. NPC必须尽量保持独立人格。
+不同人物应该拥有不同的立场、性格、利益、知识范围和情绪。
+NPC不应该像一个无条件帮助玩家的AI助手。
+
+7. NPC不会自动知道玩家不知道的信息。
+人物只能根据自己的身份、经历、观察和合理推测进行回应。
+
+8. 玩家可以失败。
+不要为了让玩家爽而自动让所有行动成功。
+危险、政治斗争、战争、资源不足、人物关系等因素都应该产生合理后果。
+
+9. 政务系统应该关注具体资源：
+屯田、粮草、军粮储备、军械、后勤、人口、土地、财政等。
+相关变化应该自然体现在剧情和人物反应中。
+
+10. 尽量避免使用星号、下划线等Markdown符号进行角色动作或强调。
+使用自然语言表达语气、动作和状态。
+
+11. 不要替玩家决定行动。
+描述环境、人物反应和可能发生的事情，然后把决定权交给玩家。
+
+12. 这是一个长期模拟游戏。
+要重视人物关系、历史变化、资源变化和玩家过去的行为造成的长期影响。
+
+现在，请引导玩家选择或生成一个视角人物，并正式开始游戏。`;
+
+
+// ==============================
+// 全局状态
+// ==============================
 
 let messages = [];
-let chatWindow, userInput;
+
+let chatWindow = null;
+
+let userInput = null;
+
+let isGenerating = false;
+
+let currentModel = "deepseek-flash";
+
+
+// ==============================
+// 存档
+// ==============================
+
+function createNewSave() {
+
+  return {
+    version: 1,
+
+    createdAt: new Date().toISOString(),
+
+    updatedAt: new Date().toISOString(),
+
+    gameState: {},
+
+    messages: [
+      {
+        role: "system",
+        content: SYSTEM_PROMPT
+      }
+    ]
+  };
+
+}
+
 
 function loadState() {
-  const saved = localStorage.getItem('sanguo_save');
-  if (saved) {
-    try { messages = JSON.parse(saved); } catch(e) { messages = []; }
+
+  const saved = localStorage.getItem("sanguo_save");
+
+  if (!saved) {
+
+    const newSave = createNewSave();
+
+    messages = newSave.messages;
+
+    return;
+
   }
-  if (!messages || messages.length === 0) {
-    messages = [{role: 'system', content: SYSTEM_PROMPT}];
-  }
-}
-
-function saveState() {
-  localStorage.setItem('sanguo_save', JSON.stringify(messages));
-}
-
-function loadTheme() {
-  const theme = localStorage.getItem('sanguo_theme');
-  if (theme === 'scroll') {
-    document.body.classList.add('theme-scroll');
-  }
-}
-
-function toggleTheme() {
-  document.body.classList.toggle('theme-scroll');
-  localStorage.setItem('sanguo_theme', document.body.classList.contains('theme-scroll') ? 'scroll' : 'dark');
-}
-
-function escapeHTML(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-// 把 *文字* 转成带样式的强调片段,而不是原样显示星号
-function formatContent(text) {
-  let escaped = escapeHTML(text);
-  escaped = escaped.replace(/\*(.+?)\*/g, '<em class="tag">$1</em>');
-  return escaped;
-}
-
-function appendMessageDiv(m) {
-  const div = document.createElement('div');
-  div.className = 'msg ' + m.role;
-  const prefix = m.role === 'user' ? '你: ' : '';
-  div.innerHTML = prefix + formatContent(m.content);
-  chatWindow.appendChild(div);
-  return div;
-}
-
-function renderMessages() {
-  chatWindow.innerHTML = '';
-  messages.forEach(m => {
-    if (m.role === 'system') return;
-    appendMessageDiv(m);
-  });
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-}
-
-async function sendMessage(text) {
-  const userMsg = {role: 'user', content: text.trim() ? text : '(继续推进剧情)'};
-  messages.push(userMsg);
-  appendMessageDiv(userMsg);
-  saveState();
-
-  const assistantDiv = document.createElement('div');
-  assistantDiv.className = 'msg assistant';
-  assistantDiv.innerHTML = '<span class="thinking">……思考中……</span>';
-  chatWindow.appendChild(assistantDiv);
-  // 新回复开始时,把这条消息的顶部固定到可视区域顶端,而不是滚到最底部
-  assistantDiv.scrollIntoView({block: 'start'});
-
-  let fullText = '';
-  let started = false;
 
   try {
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({messages})
-    });
 
-    if (!res.ok || !res.body) {
-      let errInfo = '';
-      try { errInfo = JSON.stringify(await res.json()); } catch(e) {}
-      assistantDiv.innerHTML = formatContent('出错了:' + (errInfo || res.status));
-      return;
+    const parsed = JSON.parse(saved);
+
+    // 新版存档
+    if (
+      parsed &&
+      Array.isArray(parsed.messages)
+    ) {
+
+      messages = parsed.messages;
+
     }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let buffer = '';
+    // 兼容旧版存档
+    else if (Array.isArray(parsed)) {
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // 最后一行可能不完整,留到下一块再拼
+      messages = parsed;
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === '[DONE]' || payload === '') continue;
-        try {
-          const json = JSON.parse(payload);
-          const delta = json.choices && json.choices[0] && json.choices[0].delta;
-          const piece = delta && delta.content;
-          if (piece) {
-            if (!started) { started = true; }
-            fullText += piece;
-            assistantDiv.innerHTML = formatContent(fullText);
-          }
-        } catch (e) { /* 跳过暂时无法解析的分片 */ }
-      }
     }
 
-    if (!fullText) fullText = '(未获取到有效回复,请稍后重试)';
-    messages.push({role: 'assistant', content: fullText});
-    saveState();
-  } catch (err) {
-    assistantDiv.innerHTML = formatContent('网络错误:' + err.message);
+    else {
+
+      messages = createNewSave().messages;
+
+    }
+
+  } catch (error) {
+
+    console.error("读取存档失败:", error);
+
+    messages = createNewSave().messages;
+
   }
+
 }
 
+
+function saveState() {
+
+  const saveData = {
+
+    version: 1,
+
+    updatedAt: new Date().toISOString(),
+
+    gameState: {},
+
+    messages: messages
+
+  };
+
+  localStorage.setItem(
+    "sanguo_save",
+    JSON.stringify(saveData)
+  );
+
+}
+
+
+// ==============================
+// 模型
+// ==============================
+
+function loadModel() {
+
+  const savedModel =
+    localStorage.getItem("sanguo_model");
+
+  if (
+    savedModel === "deepseek-flash" ||
+    savedModel === "deepseek-v4-pro"
+  ) {
+
+    currentModel = savedModel;
+
+  } else {
+
+    currentModel = "deepseek-flash";
+
+  }
+
+  modelSelect.value = currentModel;
+
+}
+
+
+function changeModel() {
+
+  if (isGenerating) {
+
+    return;
+
+  }
+
+  currentModel = modelSelect.value;
+
+  localStorage.setItem(
+    "sanguo_model",
+    currentModel
+  );
+
+}
+
+
+// ==============================
+// 主题
+// ==============================
+
+function loadTheme() {
+
+  const theme =
+    localStorage.getItem("sanguo_theme");
+
+  if (theme === "scroll") {
+
+    document.body.classList.add("theme-scroll");
+
+  }
+
+  updateThemeButton();
+
+}
+
+
+function updateThemeButton() {
+
+  const isScroll =
+    document.body.classList.contains("theme-scroll");
+
+  themeBtn.textContent =
+    isScroll ? "暗色模式" : "卷轴模式";
+
+}
+
+
+function toggleTheme() {
+
+  document.body.classList.toggle("theme-scroll");
+
+  const isScroll =
+    document.body.classList.contains("theme-scroll");
+
+  localStorage.setItem(
+    "sanguo_theme",
+    isScroll ? "scroll" : "dark"
+  );
+
+  updateThemeButton();
+
+}
+
+
+// ==============================
+// HTML安全处理
+// ==============================
+
+function escapeHTML(str) {
+
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
+
+// 目前保持纯文本显示。
+// 不主动解析Markdown，避免AI输出特殊符号造成UI问题。
+function formatContent(text) {
+
+  return escapeHTML(text);
+
+}
+
+
+// ==============================
+// UI
+// ==============================
+
+function appendMessageDiv(message) {
+
+  const div =
+    document.createElement("div");
+
+  div.className =
+    "msg " + message.role;
+
+  const prefix =
+    message.role === "user"
+      ? "你: "
+      : "";
+
+  div.innerHTML =
+    prefix + formatContent(message.content);
+
+  chatWindow.appendChild(div);
+
+  return div;
+
+}
+
+
+function renderMessages() {
+
+  chatWindow.innerHTML = "";
+
+  messages.forEach(message => {
+
+    if (message.role === "system") {
+
+      return;
+
+    }
+
+    appendMessageDiv(message);
+
+  });
+
+  scrollToBottom();
+
+}
+
+
+function scrollToBottom() {
+
+  chatWindow.scrollTop =
+    chatWindow.scrollHeight;
+
+}
+
+
+// ==============================
+// UI锁定
+// ==============================
+
+function setGeneratingState(generating) {
+
+  isGenerating = generating;
+
+  sendBtn.disabled = generating;
+
+  userInput.disabled = generating;
+
+  modelSelect.disabled = generating;
+
+  themeBtn.disabled = generating;
+
+  resetBtn.disabled = generating;
+
+  exportBtn.disabled = generating;
+
+  sendBtn.textContent =
+    generating ? "生成中" : "发送";
+
+}
+
+
+// ==============================
+// 发送消息
+// ==============================
+
+async function sendMessage(text) {
+
+  if (isGenerating) {
+
+    return;
+
+  }
+
+  const cleanText = text.trim();
+
+  const userMsg = {
+
+    role: "user",
+
+    content:
+      cleanText || "(继续推进剧情)"
+
+  };
+
+  messages.push(userMsg);
+
+  appendMessageDiv(userMsg);
+
+  saveState();
+
+  setGeneratingState(true);
+
+  const assistantDiv =
+    document.createElement("div");
+
+  assistantDiv.className =
+    "msg assistant";
+
+  assistantDiv.innerHTML =
+    '<span class="thinking">……正在生成……</span>';
+
+  chatWindow.appendChild(assistantDiv);
+
+  // 让新回复尽量出现在可视区域
+  assistantDiv.scrollIntoView({
+    block: "start",
+    behavior: "smooth"
+  });
+
+  let fullText = "";
+
+  try {
+
+    const res = await fetch("/api/chat", {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+
+        model: currentModel,
+
+        messages: messages
+
+      })
+
+    });
+
+
+    // ==========================
+    // HTTP错误
+    // ==========================
+
+    if (!res.ok) {
+
+      let errorMessage =
+        `服务器错误 (${res.status})`;
+
+      try {
+
+        const errorData =
+          await res.json();
+
+        if (errorData.error) {
+
+          errorMessage +=
+            ": " + errorData.error;
+
+        }
+
+      } catch (e) {
+
+        // 忽略JSON解析错误
+
+      }
+
+      assistantDiv.className =
+        "msg error";
+
+      assistantDiv.textContent =
+        errorMessage;
+
+      return;
+
+    }
+
+
+    if (!res.body) {
+
+      throw new Error(
+        "服务器没有返回可读取的数据流"
+      );
+
+    }
+
+
+    // ==========================
+    // SSE读取
+    // ==========================
+
+    const reader =
+      res.body.getReader();
+
+    const decoder =
+      new TextDecoder("utf-8");
+
+    let buffer = "";
+
+    while (true) {
+
+      const {
+        value,
+        done
+      } = await reader.read();
+
+      if (done) {
+
+        break;
+
+      }
+
+      buffer += decoder.decode(
+        value,
+        { stream: true }
+      );
+
+      const lines =
+        buffer.split("\n");
+
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+
+        const trimmed =
+          line.trim();
+
+        if (!trimmed.startsWith("data:")) {
+
+          continue;
+
+        }
+
+        const payload =
+          trimmed.slice(5).trim();
+
+        if (
+          !payload ||
+          payload === "[DONE]"
+        ) {
+
+          continue;
+
+        }
+
+        try {
+
+          const json =
+            JSON.parse(payload);
+
+          const choice =
+            json.choices &&
+            json.choices[0];
+
+          const delta =
+            choice &&
+            choice.delta;
+
+          const piece =
+            delta &&
+            delta.content;
+
+          if (piece) {
+
+            fullText += piece;
+
+            assistantDiv.innerHTML =
+              formatContent(fullText);
+
+            // 如果用户已经接近底部，自动跟随
+            const distanceFromBottom =
+              chatWindow.scrollHeight -
+              chatWindow.scrollTop -
+              chatWindow.clientHeight;
+
+            if (distanceFromBottom < 300) {
+
+              scrollToBottom();
+
+            }
+
+          }
+
+        } catch (parseError) {
+
+          // 单个分片解析失败不终止整个请求
+          console.warn(
+            "SSE分片解析失败:",
+            parseError
+          );
+
+        }
+
+      }
+
+    }
+
+
+    // 处理最后残留buffer
+    if (buffer.trim()) {
+
+      const trimmed =
+        buffer.trim();
+
+      if (trimmed.startsWith("data:")) {
+
+        const payload =
+          trimmed.slice(5).trim();
+
+        if (
+          payload &&
+          payload !== "[DONE]"
+        ) {
+
+          try {
+
+            const json =
+              JSON.parse(payload);
+
+            const piece =
+              json.choices &&
+              json.choices[0] &&
+              json.choices[0].delta &&
+              json.choices[0].delta.content;
+
+            if (piece) {
+
+              fullText += piece;
+
+              assistantDiv.innerHTML =
+                formatContent(fullText);
+
+            }
+
+          } catch (e) {
+
+            console.warn(
+              "最后SSE分片解析失败:",
+              e
+            );
+
+          }
+
+        }
+
+      }
+
+    }
+
+
+    // ==========================
+    // 没有内容
+    // ==========================
+
+    if (!fullText.trim()) {
+
+      fullText =
+        "这次没有收到有效的剧情回复，请再试一次。";
+
+      assistantDiv.innerHTML =
+        formatContent(fullText);
+
+    }
+
+
+    // 保存AI回复
+    messages.push({
+
+      role: "assistant",
+
+      content: fullText
+
+    });
+
+    saveState();
+
+  } catch (error) {
+
+    console.error(
+      "请求失败:",
+      error
+    );
+
+    assistantDiv.className =
+      "msg error";
+
+    assistantDiv.textContent =
+      "网络或连接错误：" +
+      (error.message || "未知错误");
+
+  } finally {
+
+    setGeneratingState(false);
+
+    userInput.focus();
+
+  }
+
+}
+
+
+// ==============================
+// 初始化
+// ==============================
+
 window.onload = function() {
-  chatWindow = document.getElementById('chatWindow');
-  userInput = document.getElementById('userInput');
+
+  chatWindow =
+    document.getElementById("chatWindow");
+
+  userInput =
+    document.getElementById("userInput");
+
+  const sendBtn =
+    document.getElementById("sendBtn");
+
+  const themeBtn =
+    document.getElementById("themeBtn");
+
+  const resetBtn =
+    document.getElementById("resetBtn");
+
+  const exportBtn =
+    document.getElementById("exportBtn");
+
+  window.modelSelect =
+    document.getElementById("modelSelect");
+
+  window.sendBtn = sendBtn;
+
+  window.themeBtn = themeBtn;
+
+  window.resetBtn = resetBtn;
+
+  window.exportBtn = exportBtn;
+
+
   loadTheme();
+
+  loadModel();
+
   loadState();
+
   renderMessages();
 
-  document.getElementById('sendBtn').onclick = () => {
-    const text = userInput.value;
-    userInput.value = '';
+
+  // ==========================
+  // 发送
+  // ==========================
+
+  sendBtn.onclick = function() {
+
+    const text =
+      userInput.value;
+
+    userInput.value = "";
+
     sendMessage(text);
+
   };
 
-  document.getElementById('themeBtn').onclick = toggleTheme;
 
-  document.getElementById('resetBtn').onclick = () => {
-    if (confirm('确定要清空当前存档、重新开始吗?')) {
-      messages = [{role: 'system', content: SYSTEM_PROMPT}];
-      saveState();
-      renderMessages();
+  // ==========================
+  // 模型
+  // ==========================
+
+  modelSelect.onchange =
+    changeModel;
+
+
+  // ==========================
+  // 主题
+  // ==========================
+
+  themeBtn.onclick =
+    toggleTheme;
+
+
+  // ==========================
+  // 重置
+  // ==========================
+
+  resetBtn.onclick = function() {
+
+    if (
+      !confirm(
+        "确定要清空当前存档、重新开始吗？"
+      )
+    ) {
+
+      return;
+
     }
+
+    const newSave =
+      createNewSave();
+
+    messages =
+      newSave.messages;
+
+    saveState();
+
+    renderMessages();
+
   };
 
-  document.getElementById('exportBtn').onclick = () => {
-    const text = JSON.stringify(messages, null, 2);
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(() => alert('存档已复制到剪贴板'));
-    } else {
-      prompt('请手动复制以下存档内容:', text);
+
+  // ==========================
+  // 导出
+  // ==========================
+
+  exportBtn.onclick = async function() {
+
+    const saveData = {
+
+      version: 1,
+
+      exportedAt:
+        new Date().toISOString(),
+
+      model: currentModel,
+
+      messages: messages
+
+    };
+
+    const text =
+      JSON.stringify(
+        saveData,
+        null,
+        2
+      );
+
+    try {
+
+      if (
+        navigator.clipboard &&
+        window.isSecureContext
+      ) {
+
+        await navigator.clipboard.writeText(text);
+
+        alert(
+          "存档已复制到剪贴板"
+        );
+
+      } else {
+
+        prompt(
+          "请手动复制以下存档内容：",
+          text
+        );
+
+      }
+
+    } catch (error) {
+
+      prompt(
+        "复制失败，请手动复制以下内容：",
+        text
+      );
+
     }
+
   };
+
+
+  // ==========================
+  // Enter发送
+  // Shift + Enter换行
+  // ==========================
+
+  userInput.addEventListener(
+    "keydown",
+    function(event) {
+
+      if (
+        event.key === "Enter" &&
+        !event.shiftKey
+      ) {
+
+        event.preventDefault();
+
+        sendBtn.click();
+
+      }
+
+    }
+  );
+
 };
+
 </script>
+
 </body>
 </html>
