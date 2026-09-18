@@ -2,46 +2,17 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1c1a17">
 <title>三国模拟人生</title>
 
 <style>
+  /* =========================================================
+     基础
+     ========================================================= */
+
   * {
     box-sizing: border-box;
-  }
-
-  :root {
-    --bg: #1c1a17;
-    --text: #eee;
-    --header-bg: #2b2620;
-    --border: #443c33;
-    --accent: #d9b26b;
-    --user-color: #9fd39f;
-    --input-bg: #1c1a17;
-    --btn-bg: #443c33;
-    --btn-text: #eee;
-    --tag-color: #d9b26b;
-    --muted: #999;
-    --paper-shadow: none;
-  }
-
-  /* =========================
-     日间模式：羊皮纸
-     ========================= */
-
-  body.theme-day {
-    --bg: #d8c28e;
-    --text: #49351f;
-    --header-bg: #c9ad72;
-    --border: #9d7d48;
-    --accent: #70461f;
-    --user-color: #4d6840;
-    --input-bg: #ead8a9;
-    --btn-bg: #b3935b;
-    --btn-text: #392612;
-    --tag-color: #70461f;
-    --muted: #806b4c;
-    --paper-shadow: inset 0 0 80px rgba(67, 42, 16, 0.18);
   }
 
   html,
@@ -49,9 +20,54 @@
     width: 100%;
     height: 100%;
     margin: 0;
+    padding: 0;
   }
 
+  :root {
+    --bg: #1c1a17;
+    --text: #eee9df;
+    --header-bg: #2b2620;
+    --border: #443c33;
+    --accent: #d9b26b;
+    --user-color: #9fd39f;
+    --input-bg: #171513;
+    --btn-bg: #443c33;
+    --btn-text: #eee9df;
+    --muted: #99928a;
+
+    --header-height: 54px;
+    --input-height: 76px;
+  }
+
+  /* =========================================================
+     日间模式
+     
+     设计方向：
+     暖羊皮纸 + 细微颗粒 + 轻微旧化
+     不使用外部图片。
+     ========================================================= */
+
+  body.theme-day {
+    --bg: #d9c08a;
+    --text: #47331f;
+    --header-bg: #c9aa6b;
+    --border: #987542;
+    --accent: #70431b;
+    --user-color: #4e6840;
+    --input-bg: #ead8a7;
+    --btn-bg: #b58f55;
+    --btn-text: #38230f;
+    --muted: #806b4e;
+  }
+
+  /* =========================================================
+     页面主体
+     ========================================================= */
+
   body {
+    background: var(--bg);
+    color: var(--text);
+
     font-family:
       -apple-system,
       BlinkMacSystemFont,
@@ -59,69 +75,109 @@
       "Microsoft YaHei",
       sans-serif;
 
-    background: var(--bg);
-    color: var(--text);
     overflow: hidden;
   }
 
   #app {
-    display: flex;
-    flex-direction: column;
     width: 100%;
     height: 100vh;
+    height: 100dvh;
+
+    min-height: 0;
+
+    display: flex;
+    flex-direction: column;
+
     background: var(--bg);
   }
 
-  /* =========================
-     顶部
-     ========================= */
+  /* =========================================================
+     顶部工具栏
+     ========================================================= */
 
   header {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+
+    min-height: var(--header-height);
 
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
 
-    min-height: 52px;
-    padding: 8px 12px;
+    gap: 8px;
+
+    padding:
+      8px
+      10px
+      8px
+      12px;
 
     background: var(--header-bg);
-    border-bottom: 1px solid var(--border);
+
+    border-bottom:
+      1px solid
+      var(--border);
 
     position: relative;
-    z-index: 10;
+    z-index: 5;
   }
 
   header h1 {
+    flex: 0 0 auto;
+
     margin: 0;
+
+    color: var(--accent);
+
     font-size: 18px;
     font-weight: 700;
-    color: var(--accent);
+
     letter-spacing: 1px;
+
     white-space: nowrap;
   }
 
   #toolbar {
+    min-width: 0;
+
     display: flex;
     align-items: center;
-    gap: 6px;
+
+    gap: 5px;
+
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  #toolbar::-webkit-scrollbar {
+    display: none;
   }
 
   #toolbar button,
   #modelSelect {
-    height: 32px;
-    padding: 0 9px;
+    flex: 0 0 auto;
 
-    font-size: 12px;
+    height: 32px;
+
+    padding: 0 8px;
+
+    border:
+      1px solid
+      var(--border);
+
+    border-radius: 5px;
 
     background: var(--btn-bg);
     color: var(--btn-text);
 
-    border: 1px solid var(--border);
-    border-radius: 5px;
+    font-family: inherit;
+    font-size: 12px;
 
     outline: none;
+  }
+
+  #toolbar button {
+    cursor: pointer;
   }
 
   #toolbar button:active {
@@ -131,104 +187,154 @@
   #toolbar button:disabled,
   #modelSelect:disabled {
     opacity: 0.5;
+    cursor: default;
   }
 
   #modelSelect {
-    max-width: 90px;
+    max-width: 84px;
   }
 
-  /* =========================
+  /* =========================================================
      聊天区域
-     ========================= */
+     ========================================================= */
 
   #chatWindow {
-    flex: 1;
+    /*
+      关键结构：
+
+      它是唯一负责滚动的区域。
+      输入框不会和它抢高度。
+    */
+
+    flex: 1 1 auto;
+
     min-height: 0;
+
+    width: 100%;
 
     overflow-y: auto;
     overflow-x: hidden;
 
-    padding: 20px 16px 30px;
+    padding:
+      20px
+      15px
+      30px;
 
     background: var(--bg);
 
     /*
-      关键：
-      不在 JS 中持续修改 scrollTop。
-      AI 生成过程中，用户的阅读位置由用户自己控制。
+      不让浏览器平滑滚动干扰我们的阅读位置。
     */
-
     scroll-behavior: auto;
 
+    /*
+      iPhone / iPad 惯性滚动。
+    */
     -webkit-overflow-scrolling: touch;
+
+    /*
+      防止某些浏览器把内容区域错误地扩张。
+    */
+    overscroll-behavior-y: contain;
 
     position: relative;
   }
 
-  /* 日间模式的羊皮纸质感 */
+  /* =========================================================
+     羊皮纸视觉
+     
+     不使用 fixed overlay。
+     所有纹理都属于 chatWindow 自己的背景，
+     因此不会覆盖输入框。
+     ========================================================= */
+
   body.theme-day #chatWindow {
-    background:
+
+    background-color: #d9c08a;
+
+    /*
+      1. 中心暖色
+      2. 边缘稍暗
+      3. 很细的纸张纤维
+      4. 极轻微的横向纸纹
+    */
+
+    background-image:
+
       radial-gradient(
-        ellipse at 18% 12%,
-        rgba(255, 255, 255, 0.20) 0%,
-        rgba(255, 255, 255, 0) 34%
+        ellipse at 50% 40%,
+        rgba(255, 244, 204, 0.18) 0%,
+        rgba(255, 244, 204, 0.06) 45%,
+        rgba(105, 68, 25, 0.10) 100%
       ),
+
       radial-gradient(
-        ellipse at 82% 88%,
-        rgba(82, 51, 20, 0.10) 0%,
-        rgba(82, 51, 20, 0) 36%
+        ellipse at 8% 10%,
+        rgba(255, 250, 220, 0.18) 0%,
+        transparent 30%
       ),
+
       radial-gradient(
-        ellipse at 50% 50%,
-        rgba(255, 244, 205, 0.08) 0%,
-        rgba(255, 244, 205, 0) 65%
+        ellipse at 92% 90%,
+        rgba(91, 55, 18, 0.10) 0%,
+        transparent 35%
       ),
+
       repeating-linear-gradient(
         0deg,
-        rgba(92, 60, 24, 0.025) 0px,
-        rgba(92, 60, 24, 0.025) 1px,
+        rgba(91, 59, 23, 0.025) 0px,
+        rgba(91, 59, 23, 0.025) 1px,
         transparent 1px,
-        transparent 4px
+        transparent 5px
       ),
-      #d8c28e;
 
-    box-shadow: var(--paper-shadow);
-  }
+      /*
+        内嵌 SVG 噪点。
 
-  /* 羊皮纸边缘的暗化效果 */
-  body.theme-day #chatWindow::after {
-    content: "";
-    position: fixed;
+        它不访问网络，也不会因为外部资源失效。
+        强度非常低，主要让纯色不再像“网页背景”。
+      */
 
-    left: 0;
-    right: 0;
-    top: 52px;
-    bottom: 72px;
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.32' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.055'/%3E%3C/svg%3E");
 
-    pointer-events: none;
+    background-size:
+      auto,
+      auto,
+      auto,
+      auto,
+      180px 180px;
+
+    /*
+      轻微的纸张内阴影。
+      不是覆盖层，不会影响点击和输入。
+    */
 
     box-shadow:
-      inset 0 0 70px rgba(73, 45, 17, 0.12),
-      inset 0 0 18px rgba(73, 45, 17, 0.07);
-
-    z-index: 1;
+      inset 0 0 70px rgba(74, 44, 15, 0.11),
+      inset 0 0 16px rgba(74, 44, 15, 0.06);
   }
 
-  /* =========================
+  /* =========================================================
      消息
-     ========================= */
+     ========================================================= */
 
   .msg {
     position: relative;
-    z-index: 2;
 
-    margin: 0 auto 22px;
+    width: 100%;
     max-width: 850px;
 
-    line-height: 1.9;
+    margin:
+      0 auto
+      22px;
+
+    color: var(--text);
+
     font-size: 15px;
+    line-height: 1.9;
 
     white-space: pre-wrap;
+
     overflow-wrap: anywhere;
     word-break: break-word;
   }
@@ -236,77 +342,108 @@
   .msg.user {
     color: var(--user-color);
 
-    padding-left: 10px;
-    border-left: 2px solid var(--user-color);
+    padding:
+      7px
+      10px;
+
+    border-left:
+      3px solid
+      var(--user-color);
+  }
+
+  body.theme-day .msg.user {
+    background: rgba(255, 243, 204, 0.16);
+
+    box-shadow:
+      inset 0 1px rgba(255, 250, 220, 0.12);
   }
 
   .msg.assistant {
     color: var(--text);
   }
 
-  .msg.assistant::first-letter {
-    /* 保留自然文本，不做过度装饰 */
+  body.theme-day .msg.assistant {
+    /*
+      不使用明显文字阴影。
+      羊皮纸正文必须优先保证阅读。
+    */
+    text-shadow: none;
   }
 
   .thinking {
     color: var(--muted);
+
     font-style: italic;
   }
 
-  /* =========================
-     日间模式中的文字细节
-     ========================= */
-
-  body.theme-day .msg.assistant {
-    text-shadow: 0 0 0.2px rgba(50, 30, 10, 0.2);
-  }
-
-  body.theme-day .msg.user {
-    background: rgba(255, 244, 205, 0.18);
-    padding: 7px 10px;
-    border-left: 3px solid var(--user-color);
-  }
-
-  /* =========================
+  /* =========================================================
      底部输入区
-     ========================= */
+     
+     这是上一版重点修复的位置。
+     它和 chatWindow 是两个独立的 flex 区域。
+     ========================================================= */
 
   #inputArea {
-    flex-shrink: 0;
+    flex: 0 0 auto;
+
+    width: 100%;
+
+    min-height: var(--input-height);
 
     display: flex;
     align-items: flex-end;
 
-    padding: 10px;
+    gap: 8px;
+
+    padding:
+      9px
+      10px
+      calc(9px + env(safe-area-inset-bottom));
 
     background: var(--header-bg);
-    border-top: 1px solid var(--border);
+
+    border-top:
+      1px solid
+      var(--border);
 
     position: relative;
+
     z-index: 10;
   }
 
   #userInput {
-    flex: 1;
+    flex: 1 1 auto;
+
+    min-width: 0;
 
     min-height: 44px;
     max-height: 130px;
 
-    padding: 10px 12px;
+    padding:
+      10px
+      12px;
 
-    border: 1px solid var(--border);
+    border:
+      1px solid
+      var(--border);
+
     border-radius: 7px;
 
     background: var(--input-bg);
     color: var(--text);
 
-    resize: none;
-
     font-family: inherit;
     font-size: 15px;
     line-height: 1.5;
 
+    resize: none;
+
     outline: none;
+
+    /*
+      防止 iOS 自动缩放输入框。
+    */
+    -webkit-appearance: none;
   }
 
   #userInput::placeholder {
@@ -318,22 +455,24 @@
   }
 
   #sendBtn {
-    flex-shrink: 0;
+    flex: 0 0 auto;
 
-    min-width: 64px;
-    height: 44px;
+    width: 64px;
+    min-height: 44px;
 
-    margin-left: 8px;
-    padding: 0 16px;
-
-    background: var(--accent);
-    color: var(--bg);
+    padding: 0 10px;
 
     border: none;
     border-radius: 7px;
 
+    background: var(--accent);
+    color: var(--bg);
+
+    font-family: inherit;
     font-size: 14px;
-    font-weight: bold;
+    font-weight: 700;
+
+    cursor: pointer;
   }
 
   #sendBtn:active {
@@ -342,45 +481,62 @@
 
   #sendBtn:disabled {
     opacity: 0.5;
+    cursor: default;
   }
 
-  /* =========================
-     日间模式按钮细节
-     ========================= */
+  /* =========================================================
+     日间模式按钮和输入框
+     ========================================================= */
 
   body.theme-day #toolbar button,
   body.theme-day #modelSelect {
-    border-color: #947344;
 
     background:
       linear-gradient(
-        rgba(255, 239, 190, 0.12),
-        rgba(104, 70, 27, 0.08)
+        180deg,
+        rgba(255, 242, 199, 0.14),
+        rgba(91, 56, 19, 0.08)
       ),
       var(--btn-bg);
 
+    border-color: #947043;
+
     box-shadow:
-      inset 0 1px rgba(255, 244, 207, 0.25),
-      0 1px 1px rgba(65, 40, 14, 0.12);
+      inset 0 1px rgba(255, 247, 214, 0.25),
+      0 1px 2px rgba(67, 41, 13, 0.12);
   }
 
   body.theme-day #inputArea {
-    box-shadow: inset 0 8px 18px rgba(79, 49, 17, 0.05);
+    box-shadow:
+      inset 0 5px 15px rgba(74, 45, 15, 0.05);
   }
 
   body.theme-day #userInput {
     box-shadow:
-      inset 0 2px 8px rgba(82, 52, 18, 0.08),
-      0 1px 0 rgba(255, 245, 214, 0.25);
+      inset 0 2px 7px rgba(79, 48, 15, 0.07),
+      0 1px rgba(255, 246, 211, 0.22);
   }
 
-  /* =========================
-     手机屏幕适配
-     ========================= */
+  /* =========================================================
+     手机适配
+     ========================================================= */
 
   @media (max-width: 600px) {
+
+    :root {
+      --header-height: 50px;
+    }
+
     header {
-      padding: 7px 8px;
+      min-height: 50px;
+
+      padding:
+        6px
+        7px
+        6px
+        9px;
+
+      gap: 5px;
     }
 
     header h1 {
@@ -389,82 +545,169 @@
     }
 
     #toolbar {
-      gap: 4px;
+      gap: 3px;
     }
 
     #toolbar button,
     #modelSelect {
       height: 30px;
-      padding: 0 7px;
+
+      padding:
+        0 6px;
+
       font-size: 11px;
     }
 
     #modelSelect {
-      max-width: 72px;
+      max-width: 70px;
     }
 
     #chatWindow {
-      padding: 18px 13px 26px;
+      padding:
+        17px
+        12px
+        25px;
     }
 
     .msg {
       font-size: 15px;
       line-height: 1.85;
+
       margin-bottom: 20px;
     }
 
     #inputArea {
-      padding: 8px;
+      min-height: 64px;
+
+      padding:
+        7px
+        7px
+        calc(7px + env(safe-area-inset-bottom));
     }
 
     #userInput {
-      font-size: 15px;
       min-height: 44px;
+
+      padding:
+        9px
+        10px;
+
+      font-size: 15px;
     }
 
     #sendBtn {
-      min-width: 58px;
-      padding: 0 12px;
+      width: 58px;
+      min-height: 44px;
+
+      padding: 0 8px;
     }
   }
+
+  /* =========================================================
+     更窄的手机
+     ========================================================= */
+
+  @media (max-width: 380px) {
+
+    header h1 {
+      font-size: 15px;
+    }
+
+    #toolbar button,
+    #modelSelect {
+      padding: 0 5px;
+      font-size: 10px;
+    }
+
+    #modelSelect {
+      max-width: 64px;
+    }
+  }
+
 </style>
 </head>
+
 
 <body>
 
 <div id="app">
 
+  <!-- =====================================================
+       顶部
+       ===================================================== -->
+
   <header>
+
     <h1>三国模拟人生</h1>
 
     <div id="toolbar">
 
-      <select id="modelSelect" title="选择 AI 模型">
-        <option value="deepseek-flash">Flash</option>
-        <option value="deepseek-v4-pro">Pro</option>
+      <select
+        id="modelSelect"
+        title="选择 AI 模型"
+      >
+        <option value="deepseek-flash">
+          Flash
+        </option>
+
+        <option value="deepseek-v4-pro">
+          Pro
+        </option>
       </select>
 
-      <button id="themeBtn">日间模式</button>
+      <button
+        id="themeBtn"
+        type="button"
+      >
+        日间模式
+      </button>
 
-      <button id="exportBtn">导出存档</button>
+      <button
+        id="exportBtn"
+        type="button"
+      >
+        导出存档
+      </button>
 
-      <button id="resetBtn">重置</button>
+      <button
+        id="resetBtn"
+        type="button"
+      >
+        重置
+      </button>
 
     </div>
+
   </header>
 
 
-  <div id="chatWindow"></div>
+  <!-- =====================================================
+       剧情区域
+       ===================================================== -->
 
+  <main id="chatWindow"></main>
+
+
+  <!-- =====================================================
+       输入区域
+       ===================================================== -->
 
   <div id="inputArea">
 
     <textarea
       id="userInput"
+      rows="1"
       placeholder="输入你的行动或对话，留空直接发送可让剧情自动推进"
+      autocomplete="off"
+      spellcheck="false"
     ></textarea>
 
-    <button id="sendBtn">发送</button>
+    <button
+      id="sendBtn"
+      type="button"
+    >
+      发送
+    </button>
 
   </div>
 
@@ -474,17 +717,12 @@
 <script>
 
 /* =========================================================
-   三国模拟人生 V1.2
-   重点：
-   1. 重置后真正开始新剧情
-   2. AI生成时不持续自动滚动
-   3. 新回复开始时只定位一次
-   4. 日间模式 = 羊皮纸视觉
+   三国模拟人生 V1.2.1
    ========================================================= */
 
 
 /* =========================================================
-   系统提示词
+   SYSTEM PROMPT
    ========================================================= */
 
 const SYSTEM_PROMPT = `你是一个三国题材沉浸式文字模拟游戏的主持人(GM)。
@@ -495,38 +733,45 @@ const SYSTEM_PROMPT = `你是一个三国题材沉浸式文字模拟游戏的主
 
 2. 历史可被玩家的选择改写，存在“蝴蝶效应”：玩家在关键事件上的决策会持续影响后续剧情、势力格局与人物关系，不会被剧情自动纠正回“正史”。
 
-3. 叙事风格不设特定文风限制，自然流畅表达即可。
+3. 叙事风格自然流畅，不强制模仿某一种古文或小说文风。
 
-4. 保持高自由度：玩家可以随时脱离主线，与在场的任意NPC展开不限轮次的深入对话或思想探讨，包括哲学、政治理念、人生选择、人际关系等，不强制每一轮都推进主线剧情。
+4. 保持高自由度：玩家可以随时脱离主线，与在场的任意NPC展开不限轮次的深入对话或思想探讨，包括政治、哲学、人生、战争、关系等，不强制每一轮都推进主线剧情。
 
-5. 输入以自由文本为主。在面临重大抉择的节点，可以在叙述末尾额外提供2-4个选项供参考，但玩家仍然可以完全不理会这些选项，自由输入自己的行动。
+5. 输入以自由文本为主。在面临重大抉择的节点，可以在叙述末尾额外提供2-4个选项供参考，但玩家完全可以忽略这些选项，自由输入自己的行动。
 
-6. 政务系统需覆盖屯田、粮草、军粮储备、后勤、兵器、装备等具体子项，相关数值变化要体现在剧情和人物反馈中，而不是只显示抽象数字。
+6. 政务系统需覆盖屯田、粮草、军粮储备、后勤、兵器、装备等具体子项。相关变化应该通过人物反馈、事件和实际后果体现，而不是只显示抽象数字。
 
-7. NPC必须拥有相对稳定的身份、性格、立场、利益和记忆。不同NPC之间应该存在观点差异，不要让所有人都顺着玩家说话。
+7. NPC必须拥有相对稳定的身份、性格、立场、利益和记忆。不同NPC之间应该存在真实的观点差异，不要让所有人都顺着玩家说话。
 
-8. NPC应该根据玩家过去的行为形成合理的态度变化。玩家帮助、欺骗、得罪、救援、威胁或者长期相处，都应该影响后续关系。
+8. NPC应该根据玩家过去的行为形成合理的态度变化。帮助、欺骗、得罪、救援、威胁、长期相处等行为，都应该影响后续关系。
 
-9. 不要把玩家强行设定成“天选之子”。普通人物也可以进行游戏，也可能失败、受挫、被拒绝或者错过机会。
+9. 不要把玩家强行设定成天选之子。普通人物也可以进行游戏，也可能失败、受挫、被拒绝、错过机会或者付出代价。
 
-10. 战争、政治、经济和人物关系都应该有因果关系。玩家的行动可能产生短期和长期后果。
+10. 战争、政治、经济、社会环境和人物关系应该存在因果联系。玩家的行动可能产生短期和长期后果。
 
 11. 玩家可以尝试非常规行动。只要符合世界逻辑，就应该认真判断其可能产生的结果，而不是简单回答“不可以”。
 
-12. 尽量避免使用星号、下划线等Markdown符号来标记文字。直接用自然语言体现语气、身份和状态。
+12. 尽量避免使用星号、下划线等Markdown符号标记文字。直接使用自然语言体现语气、身份和状态。
 
-13. 游戏开始时，不要直接替玩家决定身份。应该先引导玩家选择或者随机生成一个视角人物，然后正式开始游戏。
+13. NPC不要无条件赞同玩家。应该根据身份、知识、利益、性格和当时情绪作出符合逻辑的回应。
+
+14. 如果玩家提出历史人物不可能知道的信息，不要直接假装知道。可以通过合理的传闻、观察、推测或其他角色获得信息。
+
+15. 游戏应该重视人物互动和长期因果，而不是每一轮都强行制造大事件。
+
+16. 游戏开始时，不要直接替玩家决定身份。先引导玩家选择或者随机生成一个视角人物，然后正式开始游戏。
 
 现在，请开始一场新的三国人生模拟。`;
 
 
 /* =========================================================
-   全局变量
+   全局状态
    ========================================================= */
 
 let messages = [];
 
 let chatWindow = null;
+
 let userInput = null;
 
 let isGenerating = false;
@@ -535,64 +780,26 @@ let currentModel = "deepseek-flash";
 
 
 /* =========================================================
-   存档结构
+   创建新存档
    ========================================================= */
 
-function createNewSave() {
+function createNewMessages() {
 
-  return {
-    version: 1,
-
-    createdAt: new Date().toISOString(),
-
-    updatedAt: new Date().toISOString(),
-
-    gameState: {},
-
-    messages: [
-      {
-        role: "system",
-        content: SYSTEM_PROMPT
-      }
-    ]
-  };
+  return [
+    {
+      role: "system",
+      content: SYSTEM_PROMPT
+    }
+  ];
 
 }
 
 
 /* =========================================================
-   保存
+   读取创建时间
    ========================================================= */
 
-function saveState() {
-
-  const save = {
-    version: 1,
-
-    createdAt:
-      getExistingCreatedAt(),
-
-    updatedAt:
-      new Date().toISOString(),
-
-    gameState: {},
-
-    messages: messages
-  };
-
-  localStorage.setItem(
-    "sanguo_save",
-    JSON.stringify(save)
-  );
-
-}
-
-
-/* =========================================================
-   获取原来的创建时间
-   ========================================================= */
-
-function getExistingCreatedAt() {
+function getCreatedAt() {
 
   const raw =
     localStorage.getItem("sanguo_save");
@@ -603,7 +810,8 @@ function getExistingCreatedAt() {
 
   try {
 
-    const data = JSON.parse(raw);
+    const data =
+      JSON.parse(raw);
 
     if (
       data &&
@@ -613,9 +821,54 @@ function getExistingCreatedAt() {
       return data.createdAt;
     }
 
-  } catch (e) {}
+  } catch (error) {
+    // 使用新的时间
+  }
 
   return new Date().toISOString();
+
+}
+
+
+/* =========================================================
+   保存存档
+   ========================================================= */
+
+function saveState() {
+
+  const saveData = {
+
+    version: 1,
+
+    createdAt:
+      getCreatedAt(),
+
+    updatedAt:
+      new Date().toISOString(),
+
+    gameState: {},
+
+    messages:
+      messages
+
+  };
+
+
+  try {
+
+    localStorage.setItem(
+      "sanguo_save",
+      JSON.stringify(saveData)
+    );
+
+  } catch (error) {
+
+    console.error(
+      "保存存档失败:",
+      error
+    );
+
+  }
 
 }
 
@@ -626,16 +879,16 @@ function getExistingCreatedAt() {
 
 function loadState() {
 
-  const saved =
-    localStorage.getItem("sanguo_save");
+  const raw =
+    localStorage.getItem(
+      "sanguo_save"
+    );
 
-  if (!saved) {
 
-    const newSave =
-      createNewSave();
+  if (!raw) {
 
     messages =
-      newSave.messages;
+      createNewMessages();
 
     return;
 
@@ -645,12 +898,12 @@ function loadState() {
   try {
 
     const data =
-      JSON.parse(saved);
+      JSON.parse(raw);
 
 
     /*
-      兼容 V1.0：
-      以前存档直接是 messages 数组
+      兼容最早版本：
+      旧版本直接保存 messages 数组。
     */
 
     if (Array.isArray(data)) {
@@ -664,27 +917,30 @@ function loadState() {
       Array.isArray(data.messages)
     ) {
 
-      messages = data.messages;
+      messages =
+        data.messages;
 
     }
 
     else {
 
       messages =
-        createNewSave().messages;
+        createNewMessages();
 
     }
 
 
     /*
-      如果系统消息不存在，
-      自动补回来。
+      确保系统提示词存在。
     */
 
     const hasSystem =
       messages.some(
-        m => m.role === "system"
+        message =>
+          message &&
+          message.role === "system"
       );
+
 
     if (!hasSystem) {
 
@@ -695,10 +951,17 @@ function loadState() {
 
     }
 
-  } catch (e) {
+
+  } catch (error) {
+
+    console.error(
+      "读取存档失败:",
+      error
+    );
+
 
     messages =
-      createNewSave().messages;
+      createNewMessages();
 
   }
 
@@ -706,14 +969,15 @@ function loadState() {
 
 
 /* =========================================================
-   判断当前是不是“空的新游戏”
+   判断是否完全没有开始过游戏
    ========================================================= */
 
 function isEmptyGame() {
 
   return (
     messages.filter(
-      m => m.role !== "system"
+      message =>
+        message.role !== "system"
     ).length === 0
   );
 
@@ -727,11 +991,13 @@ function isEmptyGame() {
 function loadTheme() {
 
   const theme =
-    localStorage.getItem("sanguo_theme");
+    localStorage.getItem(
+      "sanguo_theme"
+    );
 
 
   /*
-    兼容之前的 scroll
+    兼容 V1.1 的 scroll。
   */
 
   if (
@@ -745,45 +1011,38 @@ function loadTheme() {
 
   }
 
+
   updateThemeButton();
 
 }
 
 
-/* =========================================================
-   更新主题按钮文字
-   ========================================================= */
-
 function updateThemeButton() {
 
-  const btn =
-    document.getElementById("themeBtn");
+  const button =
+    document.getElementById(
+      "themeBtn"
+    );
 
-  if (!btn) return;
+
+  if (!button) {
+    return;
+  }
 
 
-  if (
+  const isDay =
     document.body.classList.contains(
       "theme-day"
-    )
-  ) {
+    );
 
-    btn.textContent = "暗色模式";
 
-  }
-
-  else {
-
-    btn.textContent = "日间模式";
-
-  }
+  button.textContent =
+    isDay
+      ? "暗色模式"
+      : "日间模式";
 
 }
 
-
-/* =========================================================
-   切换主题
-   ========================================================= */
 
 function toggleTheme() {
 
@@ -795,7 +1054,9 @@ function toggleTheme() {
 
   localStorage.setItem(
     "sanguo_theme",
-    isDay ? "day" : "dark"
+    isDay
+      ? "day"
+      : "dark"
   );
 
 
@@ -805,207 +1066,7 @@ function toggleTheme() {
 
 
 /* =========================================================
-   HTML安全处理
-   ========================================================= */
-
-function escapeHTML(str) {
-
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-}
-
-
-/* =========================================================
-   创建消息元素
-   ========================================================= */
-
-function createMessageDiv(m) {
-
-  const div =
-    document.createElement("div");
-
-  div.className =
-    "msg " + m.role;
-
-
-  if (m.role === "user") {
-
-    div.textContent =
-      "你: " + m.content;
-
-  }
-
-  else {
-
-    div.textContent =
-      m.content;
-
-  }
-
-
-  return div;
-
-}
-
-
-/* =========================================================
-   添加消息
-   ========================================================= */
-
-function appendMessageDiv(m) {
-
-  const div =
-    createMessageDiv(m);
-
-  chatWindow.appendChild(div);
-
-  return div;
-
-}
-
-
-/* =========================================================
-   渲染全部消息
-   ========================================================= */
-
-function renderMessages() {
-
-  /*
-    这里保留用户当前滚动位置。
-
-    这样如果以后因为某些操作需要重新渲染，
-    也不会突然把用户拉到底部。
-  */
-
-  const oldScrollTop =
-    chatWindow
-      ? chatWindow.scrollTop
-      : 0;
-
-
-  chatWindow.innerHTML = "";
-
-
-  messages.forEach(m => {
-
-    if (m.role === "system") {
-      return;
-    }
-
-    appendMessageDiv(m);
-
-  });
-
-
-  /*
-    恢复之前的位置。
-    注意：不是 scrollToBottom。
-  */
-
-  chatWindow.scrollTop =
-    oldScrollTop;
-
-}
-
-
-/* =========================================================
-   把最新的AI回复放到阅读位置
-   ========================================================= */
-
-/*
-   非常重要：
-
-   这里只在“AI回复刚开始生成”的时候执行一次。
-
-   后面AI不断增加文字时：
-   不再调用scrollIntoView
-   不再修改scrollTop
-   不再滚到底部
-
-   所以用户可以安心阅读。
-*/
-
-function placeAssistantForReading(assistantDiv) {
-
-  requestAnimationFrame(() => {
-
-    if (!assistantDiv) return;
-
-
-    /*
-      assistantDiv.offsetTop
-      = 它距离聊天区域顶部的位置
-    */
-
-    const targetTop =
-      assistantDiv.offsetTop - 10;
-
-
-    /*
-      只定位一次。
-    */
-
-    chatWindow.scrollTop =
-      Math.max(0, targetTop);
-
-  });
-
-}
-
-
-/* =========================================================
-   设置生成状态
-   ========================================================= */
-
-function setGeneratingState(value) {
-
-  isGenerating = value;
-
-
-  const sendBtn =
-    document.getElementById("sendBtn");
-
-  const resetBtn =
-    document.getElementById("resetBtn");
-
-  const themeBtn =
-    document.getElementById("themeBtn");
-
-  const exportBtn =
-    document.getElementById("exportBtn");
-
-  const modelSelect =
-    document.getElementById("modelSelect");
-
-
-  if (sendBtn) {
-    sendBtn.disabled = value;
-  }
-
-  if (resetBtn) {
-    resetBtn.disabled = value;
-  }
-
-  if (themeBtn) {
-    themeBtn.disabled = value;
-  }
-
-  if (exportBtn) {
-    exportBtn.disabled = value;
-  }
-
-  if (modelSelect) {
-    modelSelect.disabled = value;
-  }
-
-}
-
-
-/* =========================================================
-   读取模型
+   模型
    ========================================================= */
 
 function loadModel() {
@@ -1021,7 +1082,8 @@ function loadModel() {
     saved === "deepseek-v4-pro"
   ) {
 
-    currentModel = saved;
+    currentModel =
+      saved;
 
   }
 
@@ -1033,16 +1095,14 @@ function loadModel() {
 
 
   if (select) {
+
     select.value =
       currentModel;
+
   }
 
 }
 
-
-/* =========================================================
-   保存模型
-   ========================================================= */
 
 function changeModel() {
 
@@ -1052,7 +1112,9 @@ function changeModel() {
     );
 
 
-  if (!select) return;
+  if (!select) {
+    return;
+  }
 
 
   currentModel =
@@ -1068,7 +1130,191 @@ function changeModel() {
 
 
 /* =========================================================
-   核心：请求AI并流式显示
+   创建消息DOM
+   ========================================================= */
+
+function createMessageElement(message) {
+
+  const div =
+    document.createElement("div");
+
+
+  div.className =
+    "msg " + message.role;
+
+
+  /*
+    使用 textContent。
+
+    AI返回的内容只作为普通文字显示，
+    不当作HTML执行。
+  */
+
+  if (message.role === "user") {
+
+    div.textContent =
+      "你: " + message.content;
+
+  }
+
+  else {
+
+    div.textContent =
+      message.content;
+
+  }
+
+
+  return div;
+
+}
+
+
+/* =========================================================
+   添加消息
+   ========================================================= */
+
+function appendMessage(message) {
+
+  const div =
+    createMessageElement(
+      message
+    );
+
+
+  chatWindow.appendChild(div);
+
+
+  return div;
+
+}
+
+
+/* =========================================================
+   渲染历史消息
+   ========================================================= */
+
+function renderMessages() {
+
+  /*
+    记录用户目前阅读的位置。
+
+    渲染完成后恢复它，
+    不自动滚到底部。
+  */
+
+  const oldScrollTop =
+    chatWindow
+      ? chatWindow.scrollTop
+      : 0;
+
+
+  chatWindow.innerHTML = "";
+
+
+  messages.forEach(
+    message => {
+
+      if (
+        !message ||
+        message.role === "system"
+      ) {
+        return;
+      }
+
+
+      appendMessage(
+        message
+      );
+
+    }
+  );
+
+
+  chatWindow.scrollTop =
+    oldScrollTop;
+
+}
+
+
+/* =========================================================
+   让最新AI回复进入阅读区域
+   ========================================================= */
+
+/*
+  这里只执行一次。
+
+  AI后面生成多少文字，都不会再次修改
+  scrollTop。
+*/
+
+function placeNewReplyForReading(
+  assistantDiv
+) {
+
+  requestAnimationFrame(() => {
+
+    if (!assistantDiv) {
+      return;
+    }
+
+
+    const top =
+      assistantDiv.offsetTop;
+
+
+    chatWindow.scrollTop =
+      Math.max(
+        0,
+        top - 12
+      );
+
+  });
+
+}
+
+
+/* =========================================================
+   生成状态
+   ========================================================= */
+
+function setGeneratingState(
+  generating
+) {
+
+  isGenerating =
+    generating;
+
+
+  const ids = [
+    "sendBtn",
+    "resetBtn",
+    "themeBtn",
+    "exportBtn",
+    "modelSelect"
+  ];
+
+
+  ids.forEach(id => {
+
+    const element =
+      document.getElementById(id);
+
+
+    if (element) {
+
+      element.disabled =
+        generating;
+
+    }
+
+  });
+
+}
+
+
+/* =========================================================
+   AI请求
    ========================================================= */
 
 async function requestAssistant() {
@@ -1082,18 +1328,32 @@ async function requestAssistant() {
 
 
   /*
-    创建AI消息占位元素
+    创建一个正在生成中的AI消息。
   */
 
   const assistantDiv =
     document.createElement("div");
 
+
   assistantDiv.className =
     "msg assistant";
 
 
-  assistantDiv.innerHTML =
-    '<span class="thinking">……思考中……</span>';
+  const thinking =
+    document.createElement("span");
+
+
+  thinking.className =
+    "thinking";
+
+
+  thinking.textContent =
+    "……思考中……";
+
+
+  assistantDiv.appendChild(
+    thinking
+  );
 
 
   chatWindow.appendChild(
@@ -1102,16 +1362,13 @@ async function requestAssistant() {
 
 
   /*
-    关键操作：
+    只定位一次。
 
-    AI刚开始生成的时候，
-    只把“这条新回复的开头”
-    放到视野里。
-
-    后续生成绝对不再自动滚动。
+    从这一刻开始，
+    整个生成过程绝对不再自动滚动。
   */
 
-  placeAssistantForReading(
+  placeNewReplyForReading(
     assistantDiv
   );
 
@@ -1121,50 +1378,57 @@ async function requestAssistant() {
 
   try {
 
-    const res =
-      await fetch("/api/chat", {
+    const response =
+      await fetch(
+        "/api/chat",
+        {
+          method: "POST",
 
-        method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+          body: JSON.stringify({
 
-        body: JSON.stringify({
+            messages:
+              messages,
 
-          messages: messages,
+            model:
+              currentModel
 
-          model: currentModel
+          })
 
-        })
-
-      });
+        }
+      );
 
 
     if (
-      !res.ok ||
-      !res.body
+      !response.ok ||
+      !response.body
     ) {
 
-      let errInfo = "";
+      let errorInfo = "";
 
 
       try {
 
-        errInfo =
+        errorInfo =
           JSON.stringify(
-            await res.json()
+            await response.json()
           );
 
-      } catch (e) {}
+      } catch (error) {
+        // 忽略解析错误
+      }
 
 
       const errorText =
         "出错了：" +
         (
-          errInfo ||
-          ("HTTP " + res.status)
+          errorInfo ||
+          "HTTP " +
+          response.status
         );
 
 
@@ -1178,11 +1442,13 @@ async function requestAssistant() {
 
 
     const reader =
-      res.body.getReader();
+      response.body.getReader();
 
 
     const decoder =
-      new TextDecoder("utf-8");
+      new TextDecoder(
+        "utf-8"
+      );
 
 
     let buffer = "";
@@ -1194,21 +1460,14 @@ async function requestAssistant() {
         await reader.read();
 
 
-      const value =
-        result.value;
-
-      const done =
-        result.done;
-
-
-      if (done) {
+      if (result.done) {
         break;
       }
 
 
       buffer +=
         decoder.decode(
-          value,
+          result.value,
           {
             stream: true
           }
@@ -1247,8 +1506,8 @@ async function requestAssistant() {
 
 
         if (
-          payload === "[DONE]" ||
-          payload === ""
+          !payload ||
+          payload === "[DONE]"
         ) {
           continue;
         }
@@ -1263,6 +1522,7 @@ async function requestAssistant() {
 
 
           const delta =
+            json &&
             json.choices &&
             json.choices[0] &&
             json.choices[0].delta;
@@ -1273,23 +1533,27 @@ async function requestAssistant() {
             delta.content;
 
 
-          if (piece) {
+          if (
+            typeof piece ===
+            "string" &&
+            piece.length > 0
+          ) {
 
             fullText +=
               piece;
 
 
             /*
-              关键：
+              极其重要：
 
               这里只更新文字。
 
               没有：
-              scrollIntoView()
-              scrollTop =
-              scrollTo()
+              scrollTop
+              scrollIntoView
+              scrollTo
 
-              因此不会自动下滑。
+              所以不会把用户拖到下面。
             */
 
             assistantDiv.textContent =
@@ -1297,11 +1561,12 @@ async function requestAssistant() {
 
           }
 
-        } catch (e) {
+        } catch (error) {
 
           /*
-            某些SSE分片可能暂时
-            不是完整JSON，直接跳过。
+            SSE可能把JSON拆成多个片段。
+            当前片段解析失败时跳过，
+            后续完整片段继续处理。
           */
 
         }
@@ -1324,14 +1589,15 @@ async function requestAssistant() {
 
 
     /*
-      把完整AI回复加入正式存档
+      AI回复完成后正式写入存档。
     */
 
     messages.push({
 
       role: "assistant",
 
-      content: fullText
+      content:
+        fullText
 
     });
 
@@ -1339,18 +1605,30 @@ async function requestAssistant() {
     saveState();
 
 
+    /*
+      注意：
+      这里故意没有任何滚动操作。
+    */
+
     return fullText;
 
 
-  } catch (err) {
+  } catch (error) {
 
-    const errorText =
-      "网络错误：" +
-      err.message;
+    console.error(
+      "AI请求失败:",
+      error
+    );
 
 
     assistantDiv.textContent =
-      errorText;
+      "网络错误：" +
+      (
+        error &&
+        error.message
+          ? error.message
+          : "未知错误"
+      );
 
 
     return null;
@@ -1358,7 +1636,9 @@ async function requestAssistant() {
 
   } finally {
 
-    setGeneratingState(false);
+    setGeneratingState(
+      false
+    );
 
   }
 
@@ -1366,10 +1646,12 @@ async function requestAssistant() {
 
 
 /* =========================================================
-   正常发送玩家消息
+   玩家发送消息
    ========================================================= */
 
-async function sendMessage(text) {
+async function sendMessage(
+  text
+) {
 
   if (isGenerating) {
     return;
@@ -1377,40 +1659,33 @@ async function sendMessage(text) {
 
 
   const content =
-    text.trim()
+    text.trim().length > 0
       ? text.trim()
       : "(继续推进剧情)";
 
 
-  const userMsg = {
+  const userMessage = {
 
     role: "user",
 
-    content: content
+    content:
+      content
 
   };
 
 
-  /*
-    先把玩家输入加入消息记录
-  */
-
   messages.push(
-    userMsg
+    userMessage
   );
 
 
-  appendMessageDiv(
-    userMsg
+  appendMessage(
+    userMessage
   );
 
 
   saveState();
 
-
-  /*
-    请求AI
-  */
 
   await requestAssistant();
 
@@ -1418,7 +1693,7 @@ async function sendMessage(text) {
 
 
 /* =========================================================
-   真正开始一局新游戏
+   开始全新的游戏
    ========================================================= */
 
 async function startNewGame() {
@@ -1429,17 +1704,13 @@ async function startNewGame() {
 
 
   /*
-    新游戏只保留system prompt。
+    新游戏只留下system prompt。
 
-    不添加假的“玩家消息”。
+    不伪造玩家消息。
   */
 
-  messages = [
-    {
-      role: "system",
-      content: SYSTEM_PROMPT
-    }
-  ];
+  messages =
+    createNewMessages();
 
 
   saveState();
@@ -1449,10 +1720,7 @@ async function startNewGame() {
 
 
   /*
-    直接让AI开始新的游戏。
-
-    AI会按照system prompt：
-    引导玩家选择/生成视角人物。
+    直接让GM开始。
   */
 
   await requestAssistant();
@@ -1461,7 +1729,7 @@ async function startNewGame() {
 
 
 /* =========================================================
-   真正的重置
+   重置
    ========================================================= */
 
 async function resetGame() {
@@ -1472,8 +1740,8 @@ async function resetGame() {
 
 
   const confirmed =
-    confirm(
-      "确定要开始全新的三国人生吗？\n\n当前剧情、人物关系和对话记录都会被清空。"
+    window.confirm(
+      "确定要开始全新的三国人生吗？\n\n当前剧情、人物关系和对话记录都会被清空，并立即开始新的剧情。"
     );
 
 
@@ -1483,16 +1751,27 @@ async function resetGame() {
 
 
   /*
-    彻底删除旧存档
+    先删除旧存档。
   */
 
-  localStorage.removeItem(
-    "sanguo_save"
-  );
+  try {
+
+    localStorage.removeItem(
+      "sanguo_save"
+    );
+
+  } catch (error) {
+
+    console.error(
+      "删除旧存档失败:",
+      error
+    );
+
+  }
 
 
   /*
-    重新开始
+    然后立即建立新游戏。
   */
 
   await startNewGame();
@@ -1501,12 +1780,12 @@ async function resetGame() {
 
 
 /* =========================================================
-   导出存档
+   导出
    ========================================================= */
 
 function exportSave() {
 
-  const save = {
+  const exportData = {
 
     version: 1,
 
@@ -1524,14 +1803,20 @@ function exportSave() {
 
   const text =
     JSON.stringify(
-      save,
+      exportData,
       null,
       2
     );
 
 
+  /*
+    优先使用剪贴板。
+  */
+
   if (
-    navigator.clipboard
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText ===
+      "function"
   ) {
 
     navigator.clipboard
@@ -1545,7 +1830,7 @@ function exportSave() {
       })
       .catch(() => {
 
-        prompt(
+        window.prompt(
           "请手动复制以下存档内容：",
           text
         );
@@ -1556,7 +1841,7 @@ function exportSave() {
 
   else {
 
-    prompt(
+    window.prompt(
       "请手动复制以下存档内容：",
       text
     );
@@ -1567,16 +1852,21 @@ function exportSave() {
 
 
 /* =========================================================
-   输入框自动增高
+   输入框自动高度
    ========================================================= */
 
-function autoResizeTextarea() {
+function resizeInput() {
+
+  if (!userInput) {
+    return;
+  }
+
 
   userInput.style.height =
     "auto";
 
 
-  const height =
+  const nextHeight =
     Math.min(
       userInput.scrollHeight,
       130
@@ -1584,7 +1874,7 @@ function autoResizeTextarea() {
 
 
   userInput.style.height =
-    height + "px";
+    nextHeight + "px";
 
 }
 
@@ -1593,86 +1883,63 @@ function autoResizeTextarea() {
    页面启动
    ========================================================= */
 
-window.onload = async function() {
+window.addEventListener(
+  "load",
+  async function() {
 
-  chatWindow =
+    /*
+      找到DOM。
+    */
+
+    chatWindow =
+      document.getElementById(
+        "chatWindow"
+      );
+
+
+    userInput =
+      document.getElementById(
+        "userInput"
+      );
+
+
+    /*
+      加载主题。
+    */
+
+    loadTheme();
+
+
+    /*
+      加载模型。
+    */
+
+    loadModel();
+
+
+    /*
+      加载存档。
+    */
+
+    loadState();
+
+
+    /*
+      渲染历史。
+    */
+
+    renderMessages();
+
+
+    /* =====================================================
+       发送按钮
+       ===================================================== */
+
     document.getElementById(
-      "chatWindow"
-    );
-
-
-  userInput =
-    document.getElementById(
-      "userInput"
-    );
-
-
-  /*
-    加载主题
-  */
-
-  loadTheme();
-
-
-  /*
-    加载模型
-  */
-
-  loadModel();
-
-
-  /*
-    加载存档
-  */
-
-  loadState();
-
-
-  /*
-    显示历史剧情
-  */
-
-  renderMessages();
-
-
-  /* =========================
-     发送按钮
-     ========================= */
-
-  document.getElementById(
-    "sendBtn"
-  ).onclick = async () => {
-
-    const text =
-      userInput.value;
-
-
-    userInput.value = "";
-
-    autoResizeTextarea();
-
-
-    await sendMessage(text);
-
-  };
-
-
-  /* =========================
-     Enter发送
-     Shift + Enter换行
-     ========================= */
-
-  userInput.addEventListener(
-    "keydown",
-    async (event) => {
-
-      if (
-        event.key === "Enter" &&
-        !event.shiftKey
-      ) {
-
-        event.preventDefault();
-
+      "sendBtn"
+    ).addEventListener(
+      "click",
+      async function() {
 
         if (isGenerating) {
           return;
@@ -1683,83 +1950,134 @@ window.onload = async function() {
           userInput.value;
 
 
-        userInput.value = "";
+        userInput.value =
+          "";
 
-        autoResizeTextarea();
+
+        resizeInput();
 
 
-        await sendMessage(text);
+        await sendMessage(
+          text
+        );
 
       }
+    );
+
+
+    /* =====================================================
+       Enter发送
+       Shift + Enter换行
+       ===================================================== */
+
+    userInput.addEventListener(
+      "keydown",
+      async function(event) {
+
+        if (
+          event.key === "Enter" &&
+          !event.shiftKey
+        ) {
+
+          event.preventDefault();
+
+
+          if (isGenerating) {
+            return;
+          }
+
+
+          const text =
+            userInput.value;
+
+
+          userInput.value =
+            "";
+
+
+          resizeInput();
+
+
+          await sendMessage(
+            text
+          );
+
+        }
+
+      }
+    );
+
+
+    /* =====================================================
+       输入框自动高度
+       ===================================================== */
+
+    userInput.addEventListener(
+      "input",
+      resizeInput
+    );
+
+
+    /* =====================================================
+       日间模式
+       ===================================================== */
+
+    document.getElementById(
+      "themeBtn"
+    ).addEventListener(
+      "click",
+      toggleTheme
+    );
+
+
+    /* =====================================================
+       模型
+       ===================================================== */
+
+    document.getElementById(
+      "modelSelect"
+    ).addEventListener(
+      "change",
+      changeModel
+    );
+
+
+    /* =====================================================
+       重置
+       ===================================================== */
+
+    document.getElementById(
+      "resetBtn"
+    ).addEventListener(
+      "click",
+      resetGame
+    );
+
+
+    /* =====================================================
+       导出
+       ===================================================== */
+
+    document.getElementById(
+      "exportBtn"
+    ).addEventListener(
+      "click",
+      exportSave
+    );
+
+
+    /* =====================================================
+       第一次打开时自动开始
+       ===================================================== */
+
+    if (isEmptyGame()) {
+
+      await startNewGame();
 
     }
-  );
-
-
-  /*
-    输入时自动调整高度
-  */
-
-  userInput.addEventListener(
-    "input",
-    autoResizeTextarea
-  );
-
-
-  /* =========================
-     日间模式
-     ========================= */
-
-  document.getElementById(
-    "themeBtn"
-  ).onclick =
-    toggleTheme;
-
-
-  /* =========================
-     模型
-     ========================= */
-
-  document.getElementById(
-    "modelSelect"
-  ).onchange =
-    changeModel;
-
-
-  /* =========================
-     重置
-     ========================= */
-
-  document.getElementById(
-    "resetBtn"
-  ).onclick =
-    resetGame;
-
-
-  /* =========================
-     导出
-     ========================= */
-
-  document.getElementById(
-    "exportBtn"
-  ).onclick =
-    exportSave;
-
-
-  /* =====================================================
-     第一次打开游戏时自动开始
-
-     如果当前只有system prompt，
-     说明还没有真正开始过剧情。
-     ===================================================== */
-
-  if (isEmptyGame()) {
-
-    await startNewGame();
 
   }
-
-};
+);
 
 </script>
 
