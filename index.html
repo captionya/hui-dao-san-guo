@@ -13,10 +13,6 @@
 
 <div id="app">
 
-  <!-- =====================================================
-       顶部
-       ===================================================== -->
-
   <header>
 
     <h1>三国模拟人生</h1>
@@ -57,21 +53,21 @@
         重置
       </button>
 
+      <button
+        id="settingsBtn"
+        type="button"
+        title="API Key 设置"
+      >
+        ⚙
+      </button>
+
     </div>
 
   </header>
 
 
-  <!-- =====================================================
-       剧情区域
-       ===================================================== -->
-
   <main id="chatWindow"></main>
 
-
-  <!-- =====================================================
-       输入区域
-       ===================================================== -->
 
   <div id="inputArea">
 
@@ -88,6 +84,55 @@
       type="button"
     >
       发送
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     API Key 弹窗
+     ===================================================== -->
+
+<div id="keyModal" class="hidden">
+
+  <div class="modal-card">
+
+    <h2 id="keyModalTitle">
+      填写你的 DeepSeek API Key
+    </h2>
+
+    <p>
+      Key 只保存在你的浏览器里，不会上传到服务器。
+    </p>
+
+    <input
+      type="password"
+      id="keyInput"
+      placeholder="sk-xxxxxxxxxxxxxxxx"
+      autocomplete="off"
+      spellcheck="false"
+    >
+
+    <p
+      id="keyError"
+      class="key-error"
+    ></p>
+
+    <button
+      id="keySubmitBtn"
+      type="button"
+    >
+      开始游戏
+    </button>
+
+    <button
+      id="keyClearBtn"
+      type="button"
+      class="key-clear-btn"
+    >
+      清除 Key
     </button>
 
   </div>

@@ -59,18 +59,24 @@ export async function onRequestPost({ request, env }) {
 
 
     // ==============================
-    // API Key
+    // 读取用户 API Key
     // ==============================
 
-    if (!env.DEEPSEEK_API_KEY) {
+    const userApiKey =
+      request.headers.get("X-User-API-Key");
+
+    if (
+      !userApiKey ||
+      !userApiKey.startsWith("sk-")
+    ) {
 
       return new Response(
         JSON.stringify({
           error:
-            "服务器没有配置 DEEPSEEK_API_KEY"
+            "缺少有效的 API Key，请点击右上角 ⚙ 填写你的 DeepSeek API Key"
         }),
         {
-          status: 500,
+          status: 400,
           headers: {
             "Content-Type": "application/json"
           }
@@ -93,7 +99,7 @@ export async function onRequestPost({ request, env }) {
           "Content-Type": "application/json",
 
           "Authorization":
-            `Bearer ${env.DEEPSEEK_API_KEY}`
+            `Bearer ${userApiKey}`
         },
 
         body: JSON.stringify({
@@ -129,8 +135,7 @@ export async function onRequestPost({ request, env }) {
       const errText =
         await dsResponse.text();
 
-      let errorMessage =
-        errText;
+      let errorMessage = errText;
 
       try {
 
@@ -149,9 +154,7 @@ export async function onRequestPost({ request, env }) {
         }
 
       } catch (e) {
-
         // 如果不是JSON，就直接使用原文本
-
       }
 
 

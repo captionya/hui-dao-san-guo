@@ -1,5 +1,5 @@
 /* =========================================================
-   三国模拟人生 V1.2.1 — 前端逻辑
+   三国模拟人生 V1.3.0 — 前端逻辑
    ========================================================= */
 
 
@@ -16,6 +16,8 @@ let userInput = null;
 let isGenerating = false;
 
 let currentModel = "deepseek-flash";
+
+let userApiKey = "";
 
 
 /* =========================================================
@@ -140,11 +142,6 @@ function loadState() {
       JSON.parse(raw);
 
 
-    /*
-      兼容最早版本：
-      旧版本直接保存 messages 数组。
-    */
-
     if (Array.isArray(data)) {
 
       messages = data;
@@ -168,10 +165,6 @@ function loadState() {
 
     }
 
-
-    /*
-      确保系统提示词存在。
-    */
 
     const hasSystem =
       messages.some(
@@ -234,10 +227,6 @@ function loadTheme() {
       "sanguo_theme"
     );
 
-
-  /*
-    兼容 V1.1 的 scroll。
-  */
 
   if (
     theme === "day" ||
@@ -382,13 +371,6 @@ function createMessageElement(message) {
     "msg " + message.role;
 
 
-  /*
-    使用 textContent。
-
-    AI返回的内容只作为普通文字显示，
-    不当作HTML执行。
-  */
-
   if (message.role === "user") {
 
     div.textContent =
@@ -435,13 +417,6 @@ function appendMessage(message) {
 
 function renderMessages() {
 
-  /*
-    记录用户目前阅读的位置。
-
-    渲染完成后恢复它，
-    不自动滚到底部。
-  */
-
   const oldScrollTop =
     chatWindow
       ? chatWindow.scrollTop
@@ -479,13 +454,6 @@ function renderMessages() {
 /* =========================================================
    让最新AI回复进入阅读区域
    ========================================================= */
-
-/*
-  这里只执行一次。
-
-  AI后面生成多少文字，都不会再次修改
-  scrollTop。
-*/
 
 function placeNewReplyForReading(
   assistantDiv
@@ -530,7 +498,8 @@ function setGeneratingState(
     "resetBtn",
     "themeBtn",
     "exportBtn",
-    "modelSelect"
+    "modelSelect",
+    "settingsBtn"
   ];
 
 
@@ -566,10 +535,6 @@ async function requestAssistant() {
   setGeneratingState(true);
 
 
-  /*
-    创建一个正在生成中的AI消息。
-  */
-
   const assistantDiv =
     document.createElement("div");
 
@@ -600,13 +565,6 @@ async function requestAssistant() {
   );
 
 
-  /*
-    只定位一次。
-
-    从这一刻开始，
-    整个生成过程绝对不再自动滚动。
-  */
-
   placeNewReplyForReading(
     assistantDiv
   );
@@ -625,7 +583,10 @@ async function requestAssistant() {
 
           headers: {
             "Content-Type":
-              "application/json"
+              "application/json",
+
+            "X-User-API-Key":
+              userApiKey
           },
 
           body: JSON.stringify({
@@ -782,32 +743,13 @@ async function requestAssistant() {
               piece;
 
 
-            /*
-              极其重要：
-
-              这里只更新文字。
-
-              没有：
-              scrollTop
-              scrollIntoView
-              scrollTo
-
-              所以不会把用户拖到下面。
-            */
-
             assistantDiv.textContent =
               fullText;
 
           }
 
         } catch (error) {
-
-          /*
-            SSE可能把JSON拆成多个片段。
-            当前片段解析失败时跳过，
-            后续完整片段继续处理。
-          */
-
+          // SSE片段解析失败，跳过
         }
 
       }
@@ -827,10 +769,6 @@ async function requestAssistant() {
     }
 
 
-    /*
-      AI回复完成后正式写入存档。
-    */
-
     messages.push({
 
       role: "assistant",
@@ -843,11 +781,6 @@ async function requestAssistant() {
 
     saveState();
 
-
-    /*
-      注意：
-      这里故意没有任何滚动操作。
-    */
 
     return fullText;
 
@@ -942,12 +875,6 @@ async function startNewGame() {
   }
 
 
-  /*
-    新游戏只留下system prompt。
-
-    不伪造玩家消息。
-  */
-
   messages =
     createNewMessages();
 
@@ -957,10 +884,6 @@ async function startNewGame() {
 
   renderMessages();
 
-
-  /*
-    直接让GM开始。
-  */
 
   await requestAssistant();
 
@@ -989,10 +912,6 @@ async function resetGame() {
   }
 
 
-  /*
-    先删除旧存档。
-  */
-
   try {
 
     localStorage.removeItem(
@@ -1008,10 +927,6 @@ async function resetGame() {
 
   }
 
-
-  /*
-    然后立即建立新游戏。
-  */
 
   await startNewGame();
 
@@ -1047,10 +962,6 @@ function exportSave() {
       2
     );
 
-
-  /*
-    优先使用剪贴板。
-  */
 
   if (
     navigator.clipboard &&
@@ -1119,16 +1030,186 @@ function resizeInput() {
 
 
 /* =========================================================
+   BYOK — API Key 管理
+   ========================================================= */
+
+function loadApiKey() {
+
+  const saved =
+    localStorage.getItem("userApiKey");
+
+
+  if (saved) {
+
+    userApiKey = saved;
+
+  } else {
+
+    showKeyModal(false);
+
+  }
+
+}
+
+
+function showKeyModal(isSettings) {
+
+  const modal =
+    document.getElementById(
+      "keyModal"
+    );
+
+  const title =
+    document.getElementById(
+      "keyModalTitle"
+    );
+
+  const submitBtn =
+    document.getElementById(
+      "keySubmitBtn"
+    );
+
+  const clearBtn =
+    document.getElementById(
+      "keyClearBtn"
+    );
+
+  const errorEl =
+    document.getElementById(
+      "keyError"
+    );
+
+  const input =
+    document.getElementById(
+      "keyInput"
+    );
+
+
+  if (title) {
+    title.textContent =
+      isSettings
+        ? "更换 API Key"
+        : "填写你的 DeepSeek API Key";
+  }
+
+  if (submitBtn) {
+    submitBtn.textContent =
+      isSettings
+        ? "保存"
+        : "开始游戏";
+  }
+
+  if (clearBtn) {
+    clearBtn.style.display =
+      isSettings
+        ? "block"
+        : "none";
+  }
+
+  if (errorEl) {
+    errorEl.textContent = "";
+  }
+
+  if (input) {
+    input.value = "";
+  }
+
+
+  modal.dataset.settings =
+    isSettings ? "1" : "0";
+
+
+  modal.classList.remove("hidden");
+
+}
+
+
+function hideKeyModal() {
+
+  document.getElementById(
+    "keyModal"
+  ).classList.add("hidden");
+
+}
+
+
+function submitApiKey() {
+
+  const input =
+    document.getElementById(
+      "keyInput"
+    );
+
+  const errorEl =
+    document.getElementById(
+      "keyError"
+    );
+
+  const modal =
+    document.getElementById(
+      "keyModal"
+    );
+
+
+  const key =
+    input
+      ? input.value.trim()
+      : "";
+
+
+  if (!key.startsWith("sk-")) {
+
+    if (errorEl) {
+      errorEl.textContent =
+        "Key 格式不正确，应以 sk- 开头";
+    }
+
+    return;
+
+  }
+
+
+  const wasFirstTime =
+    modal.dataset.settings !== "1";
+
+
+  userApiKey = key;
+
+  localStorage.setItem(
+    "userApiKey",
+    key
+  );
+
+  hideKeyModal();
+
+
+  if (wasFirstTime && isEmptyGame()) {
+
+    startNewGame();
+
+  }
+
+}
+
+
+function clearApiKey() {
+
+  userApiKey = "";
+
+  localStorage.removeItem("userApiKey");
+
+  showKeyModal(false);
+
+}
+
+
+/* =========================================================
    页面启动
    ========================================================= */
 
 window.addEventListener(
   "load",
   async function() {
-
-    /*
-      找到DOM。
-    */
 
     chatWindow =
       document.getElementById(
@@ -1142,30 +1223,11 @@ window.addEventListener(
       );
 
 
-    /*
-      加载主题。
-    */
-
     loadTheme();
-
-
-    /*
-      加载模型。
-    */
 
     loadModel();
 
-
-    /*
-      加载存档。
-    */
-
     loadState();
-
-
-    /*
-      渲染历史。
-    */
 
     renderMessages();
 
@@ -1205,8 +1267,7 @@ window.addEventListener(
 
 
     /* =====================================================
-       Enter发送
-       Shift + Enter换行
+       Enter发送 / Shift+Enter换行
        ===================================================== */
 
     userInput.addEventListener(
@@ -1306,10 +1367,73 @@ window.addEventListener(
 
 
     /* =====================================================
-       第一次打开时自动开始
+       API Key 设置按钮
        ===================================================== */
 
-    if (isEmptyGame()) {
+    document.getElementById(
+      "settingsBtn"
+    ).addEventListener(
+      "click",
+      function() {
+        showKeyModal(true);
+      }
+    );
+
+
+    /* =====================================================
+       弹窗：提交 Key
+       ===================================================== */
+
+    document.getElementById(
+      "keySubmitBtn"
+    ).addEventListener(
+      "click",
+      submitApiKey
+    );
+
+
+    /* =====================================================
+       弹窗：输入框回车提交
+       ===================================================== */
+
+    document.getElementById(
+      "keyInput"
+    ).addEventListener(
+      "keydown",
+      function(event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          submitApiKey();
+        }
+      }
+    );
+
+
+    /* =====================================================
+       弹窗：清除 Key
+       ===================================================== */
+
+    document.getElementById(
+      "keyClearBtn"
+    ).addEventListener(
+      "click",
+      clearApiKey
+    );
+
+
+    /* =====================================================
+       加载 API Key（没有则弹窗）
+       ===================================================== */
+
+    loadApiKey();
+
+
+    /*
+      有 Key 才自动开始游戏。
+      没有 Key 时，由弹窗提交后触发。
+    */
+
+    if (userApiKey && isEmptyGame()) {
 
       await startNewGame();
 

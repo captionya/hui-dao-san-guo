@@ -615,3 +615,140 @@ body.theme-day #userInput {
     max-width: 64px;
   }
 }
+
+/* =========================================================
+   API Key 弹窗
+   ========================================================= */
+
+#keyModal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(0, 0, 0, 0.78);
+}
+
+#keyModal.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 400px;
+
+  background: var(--header-bg);
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 12px;
+
+  padding: 28px 24px;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 14px;
+}
+
+.modal-card h2 {
+  margin: 0;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  color: var(--accent);
+}
+
+.modal-card p {
+  margin: 0;
+
+  font-size: 13px;
+  line-height: 1.6;
+
+  color: var(--muted);
+}
+
+.modal-card input[type="password"] {
+  width: 100%;
+  height: 44px;
+
+  padding: 0 12px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 7px;
+
+  background: var(--input-bg);
+  color: var(--text);
+
+  font-family: inherit;
+  font-size: 15px;
+
+  outline: none;
+
+ appearance: none;
+-webkit-appearance: none;
+}
+
+.modal-card input[type="password"]:focus {
+  border-color: var(--accent);
+}
+
+.key-error {
+  min-height: 18px;
+
+  color: #e06c6c !important;
+  font-size: 13px !important;
+}
+
+#keySubmitBtn {
+  height: 44px;
+
+  border: none;
+  border-radius: 7px;
+
+  background: var(--accent);
+  color: var(--bg);
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+#keySubmitBtn:active {
+  transform: translateY(1px);
+}
+
+.key-clear-btn {
+  height: 36px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 7px;
+
+  background: transparent;
+  color: var(--muted);
+
+  font-family: inherit;
+  font-size: 13px;
+
+  cursor: pointer;
+}
+
+.key-clear-btn:active {
+  transform: translateY(1px);
+}
