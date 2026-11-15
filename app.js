@@ -1,5 +1,5 @@
 /* =========================================================
-   三国模拟人生 V1.3.0 — 前端逻辑
+   三国模拟人生 V1.4.0 — 前端逻辑
    ========================================================= */
 
 
@@ -495,11 +495,13 @@ function setGeneratingState(
 
   const ids = [
     "sendBtn",
-    "resetBtn",
     "themeBtn",
+    "settingsBtn",
+    "resetBtn",
     "exportBtn",
     "modelSelect",
-    "settingsBtn"
+    "changeKeyBtn",
+    "keySubmitBtn"
   ];
 
 
@@ -623,17 +625,13 @@ async function requestAssistant() {
       }
 
 
-      const errorText =
+      assistantDiv.textContent =
         "出错了：" +
         (
           errorInfo ||
           "HTTP " +
           response.status
         );
-
-
-      assistantDiv.textContent =
-        errorText;
 
 
       return null;
@@ -646,9 +644,7 @@ async function requestAssistant() {
 
 
     const decoder =
-      new TextDecoder(
-        "utf-8"
-      );
+      new TextDecoder("utf-8");
 
 
     let buffer = "";
@@ -668,9 +664,7 @@ async function requestAssistant() {
       buffer +=
         decoder.decode(
           result.value,
-          {
-            stream: true
-          }
+          { stream: true }
         );
 
 
@@ -691,18 +685,14 @@ async function requestAssistant() {
 
 
         if (
-          !trimmed.startsWith(
-            "data:"
-          )
+          !trimmed.startsWith("data:")
         ) {
           continue;
         }
 
 
         const payload =
-          trimmed
-            .slice(5)
-            .trim();
+          trimmed.slice(5).trim();
 
 
         if (
@@ -716,9 +706,7 @@ async function requestAssistant() {
         try {
 
           const json =
-            JSON.parse(
-              payload
-            );
+            JSON.parse(payload);
 
 
           const delta =
@@ -734,14 +722,11 @@ async function requestAssistant() {
 
 
           if (
-            typeof piece ===
-            "string" &&
+            typeof piece === "string" &&
             piece.length > 0
           ) {
 
-            fullText +=
-              piece;
-
+            fullText += piece;
 
             assistantDiv.textContent =
               fullText;
@@ -762,7 +747,6 @@ async function requestAssistant() {
       fullText =
         "（未获取到有效回复，请稍后重试。）";
 
-
       assistantDiv.textContent =
         fullText;
 
@@ -770,12 +754,8 @@ async function requestAssistant() {
 
 
     messages.push({
-
       role: "assistant",
-
-      content:
-        fullText
-
+      content: fullText
     });
 
 
@@ -787,17 +767,13 @@ async function requestAssistant() {
 
   } catch (error) {
 
-    console.error(
-      "AI请求失败:",
-      error
-    );
+    console.error("AI请求失败:", error);
 
 
     assistantDiv.textContent =
       "网络错误：" +
       (
-        error &&
-        error.message
+        error && error.message
           ? error.message
           : "未知错误"
       );
@@ -808,9 +784,7 @@ async function requestAssistant() {
 
   } finally {
 
-    setGeneratingState(
-      false
-    );
+    setGeneratingState(false);
 
   }
 
@@ -821,9 +795,7 @@ async function requestAssistant() {
    玩家发送消息
    ========================================================= */
 
-async function sendMessage(
-  text
-) {
+async function sendMessage(text) {
 
   if (isGenerating) {
     return;
@@ -837,27 +809,16 @@ async function sendMessage(
 
 
   const userMessage = {
-
     role: "user",
-
-    content:
-      content
-
+    content: content
   };
 
 
-  messages.push(
-    userMessage
-  );
+  messages.push(userMessage);
 
-
-  appendMessage(
-    userMessage
-  );
-
+  appendMessage(userMessage);
 
   saveState();
-
 
   await requestAssistant();
 
@@ -875,15 +836,11 @@ async function startNewGame() {
   }
 
 
-  messages =
-    createNewMessages();
-
+  messages = createNewMessages();
 
   saveState();
 
-
   renderMessages();
-
 
   await requestAssistant();
 
@@ -899,6 +856,14 @@ async function resetGame() {
   if (isGenerating) {
     return;
   }
+
+
+  /*
+    先关闭设置面板，
+    再弹确认框，体验更干净。
+  */
+
+  hideSettingsPanel();
 
 
   const confirmed =
@@ -939,6 +904,9 @@ async function resetGame() {
 
 function exportSave() {
 
+  hideSettingsPanel();
+
+
   const exportData = {
 
     version: 1,
@@ -946,45 +914,32 @@ function exportSave() {
     exportedAt:
       new Date().toISOString(),
 
-    model:
-      currentModel,
+    model: currentModel,
 
-    messages:
-      messages
+    messages: messages
 
   };
 
 
   const text =
-    JSON.stringify(
-      exportData,
-      null,
-      2
-    );
+    JSON.stringify(exportData, null, 2);
 
 
   if (
     navigator.clipboard &&
-    typeof navigator.clipboard.writeText ===
-      "function"
+    typeof navigator.clipboard.writeText === "function"
   ) {
 
     navigator.clipboard
       .writeText(text)
       .then(() => {
-
-        alert(
-          "存档已复制到剪贴板"
-        );
-
+        alert("存档已复制到剪贴板");
       })
       .catch(() => {
-
         window.prompt(
           "请手动复制以下存档内容：",
           text
         );
-
       });
 
   }
@@ -1012,19 +967,37 @@ function resizeInput() {
   }
 
 
-  userInput.style.height =
-    "auto";
+  userInput.style.height = "auto";
 
 
   const nextHeight =
-    Math.min(
-      userInput.scrollHeight,
-      130
-    );
+    Math.min(userInput.scrollHeight, 130);
 
 
   userInput.style.height =
     nextHeight + "px";
+
+}
+
+
+/* =========================================================
+   设置面板
+   ========================================================= */
+
+function showSettingsPanel() {
+
+  document.getElementById(
+    "settingsModal"
+  ).classList.remove("hidden");
+
+}
+
+
+function hideSettingsPanel() {
+
+  document.getElementById(
+    "settingsModal"
+  ).classList.add("hidden");
 
 }
 
@@ -1055,9 +1028,7 @@ function loadApiKey() {
 function showKeyModal(isSettings) {
 
   const modal =
-    document.getElementById(
-      "keyModal"
-    );
+    document.getElementById("keyModal");
 
   const title =
     document.getElementById(
@@ -1074,15 +1045,16 @@ function showKeyModal(isSettings) {
       "keyClearBtn"
     );
 
-  const errorEl =
+  const closeBtn =
     document.getElementById(
-      "keyError"
+      "keyCloseBtn"
     );
 
+  const errorEl =
+    document.getElementById("keyError");
+
   const input =
-    document.getElementById(
-      "keyInput"
-    );
+    document.getElementById("keyInput");
 
 
   if (title) {
@@ -1094,16 +1066,23 @@ function showKeyModal(isSettings) {
 
   if (submitBtn) {
     submitBtn.textContent =
-      isSettings
-        ? "保存"
-        : "开始游戏";
+      isSettings ? "保存" : "开始游戏";
   }
 
   if (clearBtn) {
     clearBtn.style.display =
-      isSettings
-        ? "block"
-        : "none";
+      isSettings ? "block" : "none";
+  }
+
+  /*
+    首次填写时没有 Key 可取消，
+    隐藏关闭按钮。
+    设置模式下可以关闭。
+  */
+
+  if (closeBtn) {
+    closeBtn.style.display =
+      isSettings ? "flex" : "none";
   }
 
   if (errorEl) {
@@ -1136,25 +1115,17 @@ function hideKeyModal() {
 function submitApiKey() {
 
   const input =
-    document.getElementById(
-      "keyInput"
-    );
+    document.getElementById("keyInput");
 
   const errorEl =
-    document.getElementById(
-      "keyError"
-    );
+    document.getElementById("keyError");
 
   const modal =
-    document.getElementById(
-      "keyModal"
-    );
+    document.getElementById("keyModal");
 
 
   const key =
-    input
-      ? input.value.trim()
-      : "";
+    input ? input.value.trim() : "";
 
 
   if (!key.startsWith("sk-")) {
@@ -1175,10 +1146,7 @@ function submitApiKey() {
 
   userApiKey = key;
 
-  localStorage.setItem(
-    "userApiKey",
-    key
-  );
+  localStorage.setItem("userApiKey", key);
 
   hideKeyModal();
 
@@ -1224,11 +1192,8 @@ window.addEventListener(
 
 
     loadTheme();
-
     loadModel();
-
     loadState();
-
     renderMessages();
 
 
@@ -1242,25 +1207,13 @@ window.addEventListener(
       "click",
       async function() {
 
-        if (isGenerating) {
-          return;
-        }
+        if (isGenerating) return;
 
-
-        const text =
-          userInput.value;
-
-
-        userInput.value =
-          "";
-
-
+        const text = userInput.value;
+        userInput.value = "";
         resizeInput();
 
-
-        await sendMessage(
-          text
-        );
+        await sendMessage(text);
 
       }
     );
@@ -1281,26 +1234,13 @@ window.addEventListener(
 
           event.preventDefault();
 
+          if (isGenerating) return;
 
-          if (isGenerating) {
-            return;
-          }
-
-
-          const text =
-            userInput.value;
-
-
-          userInput.value =
-            "";
-
-
+          const text = userInput.value;
+          userInput.value = "";
           resizeInput();
 
-
-          await sendMessage(
-            text
-          );
+          await sendMessage(text);
 
         }
 
@@ -1331,6 +1271,30 @@ window.addEventListener(
 
 
     /* =====================================================
+       设置按钮 → 打开设置面板
+       ===================================================== */
+
+    document.getElementById(
+      "settingsBtn"
+    ).addEventListener(
+      "click",
+      showSettingsPanel
+    );
+
+
+    /* =====================================================
+       设置面板关闭
+       ===================================================== */
+
+    document.getElementById(
+      "settingsCloseBtn"
+    ).addEventListener(
+      "click",
+      hideSettingsPanel
+    );
+
+
+    /* =====================================================
        模型
        ===================================================== */
 
@@ -1339,18 +1303,6 @@ window.addEventListener(
     ).addEventListener(
       "change",
       changeModel
-    );
-
-
-    /* =====================================================
-       重置
-       ===================================================== */
-
-    document.getElementById(
-      "resetBtn"
-    ).addEventListener(
-      "click",
-      resetGame
     );
 
 
@@ -1367,21 +1319,46 @@ window.addEventListener(
 
 
     /* =====================================================
-       API Key 设置按钮
+       重置
        ===================================================== */
 
     document.getElementById(
-      "settingsBtn"
+      "resetBtn"
+    ).addEventListener(
+      "click",
+      resetGame
+    );
+
+
+    /* =====================================================
+       更换 API Key（从设置面板进入）
+       ===================================================== */
+
+    document.getElementById(
+      "changeKeyBtn"
     ).addEventListener(
       "click",
       function() {
+        hideSettingsPanel();
         showKeyModal(true);
       }
     );
 
 
     /* =====================================================
-       弹窗：提交 Key
+       Key 弹窗：关闭按钮
+       ===================================================== */
+
+    document.getElementById(
+      "keyCloseBtn"
+    ).addEventListener(
+      "click",
+      hideKeyModal
+    );
+
+
+    /* =====================================================
+       Key 弹窗：提交
        ===================================================== */
 
     document.getElementById(
@@ -1393,7 +1370,7 @@ window.addEventListener(
 
 
     /* =====================================================
-       弹窗：输入框回车提交
+       Key 弹窗：回车提交
        ===================================================== */
 
     document.getElementById(
@@ -1410,7 +1387,7 @@ window.addEventListener(
 
 
     /* =====================================================
-       弹窗：清除 Key
+       Key 弹窗：清除
        ===================================================== */
 
     document.getElementById(
@@ -1422,16 +1399,11 @@ window.addEventListener(
 
 
     /* =====================================================
-       加载 API Key（没有则弹窗）
+       加载 Key（没有则弹窗）
        ===================================================== */
 
     loadApiKey();
 
-
-    /*
-      有 Key 才自动开始游戏。
-      没有 Key 时，由弹窗提交后触发。
-    */
 
     if (userApiKey && isEmptyGame()) {
 

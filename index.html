@@ -19,19 +19,6 @@
 
     <div id="toolbar">
 
-      <select
-        id="modelSelect"
-        title="选择 AI 模型"
-      >
-        <option value="deepseek-flash">
-          Flash
-        </option>
-
-        <option value="deepseek-v4-pro">
-          Pro
-        </option>
-      </select>
-
       <button
         id="themeBtn"
         type="button"
@@ -40,34 +27,17 @@
       </button>
 
       <button
-        id="exportBtn"
-        type="button"
-      >
-        导出存档
-      </button>
-
-      <button
-        id="resetBtn"
-        type="button"
-      >
-        重置
-      </button>
-
-      <button
         id="settingsBtn"
         type="button"
-        title="API Key 设置"
       >
-        ⚙
+        设置
       </button>
 
     </div>
 
   </header>
 
-
   <main id="chatWindow"></main>
-
 
   <div id="inputArea">
 
@@ -99,9 +69,21 @@
 
   <div class="modal-card">
 
-    <h2 id="keyModalTitle">
-      填写你的 DeepSeek API Key
-    </h2>
+    <div class="modal-header">
+
+      <h2 id="keyModalTitle">
+        填写你的 DeepSeek API Key
+      </h2>
+
+      <button
+        id="keyCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
 
     <p>
       Key 只保存在你的浏览器里，不会上传到服务器。
@@ -133,6 +115,78 @@
       class="key-clear-btn"
     >
       清除 Key
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     设置面板
+     ===================================================== -->
+
+<div id="settingsModal" class="hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+
+      <h2>设置</h2>
+
+      <button
+        id="settingsCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <div class="settings-row">
+
+      <span class="settings-label">
+        AI 模型
+      </span>
+
+      <select
+        id="modelSelect"
+        title="选择 AI 模型"
+      >
+        <option value="deepseek-flash">
+          Flash
+        </option>
+
+        <option value="deepseek-v4-pro">
+          Pro
+        </option>
+      </select>
+
+    </div>
+
+    <button
+      id="exportBtn"
+      type="button"
+      class="settings-action-btn"
+    >
+      导出存档
+    </button>
+
+    <button
+      id="resetBtn"
+      type="button"
+      class="settings-action-btn settings-danger-btn"
+    >
+      重置游戏
+    </button>
+
+    <button
+      id="changeKeyBtn"
+      type="button"
+      class="settings-action-btn"
+    >
+      更换 API Key
     </button>
 
   </div>
