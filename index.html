@@ -1,107 +1,331 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>三国模拟人生</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1c1a17">
+<title>三国模拟人生</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
+
 <body>
-<!-- ───── 主布局 ───── -->
+
 <div id="app">
-  <header id="header">
-    <span id="gameTitle">三国模拟人生</span>
-    <nav id="toolbar">
-      <button id="themeBtn">暗色模式</button>
-      <button id="newGameBtn">新开一局</button>
-      <button id="settingsBtn">设置</button>
-    </nav>
+
+  <header>
+
+    <h1>三国模拟人生</h1>
+
+    <div id="toolbar">
+
+      <button
+        id="themeBtn"
+        type="button"
+      >
+        日间模式
+      </button>
+
+      <button
+        id="newGameBtn"
+        type="button"
+      >
+        新开一局
+      </button>
+
+      <button
+        id="settingsBtn"
+        type="button"
+      >
+        设置
+      </button>
+
+    </div>
+
   </header>
-  <main id="chatArea">
-    <div id="messages"></div>
-  </main>
-  <footer id="inputArea">
-    <textarea id="userInput" placeholder="输入你的行动或对话，留空发送可自动推进剧情……" rows="1"></textarea>
-    <button id="sendBtn">发送</button>
-  </footer>
-</div>
-<!-- ───── 设置面板 ───── -->
-<div id="settingsOverlay" class="overlay hidden"></div>
-<aside id="settingsPanel" class="hidden">
-  <div class="panel-header">
-    <h2>设置</h2>
-    <button id="closeSettingsBtn" aria-label="关闭">✕</button>
+
+  <main id="chatWindow"></main>
+
+  <div id="inputArea">
+
+    <textarea
+      id="userInput"
+      rows="1"
+      placeholder="输入你的行动或对话，留空直接发送可让剧情自动推进"
+      autocomplete="off"
+      spellcheck="false"
+    ></textarea>
+
+    <button
+      id="sendBtn"
+      type="button"
+    >
+      发送
+    </button>
+
   </div>
-  <div class="panel-body">
-    <section class="s-section">
-      <h3>AI 模型</h3>
-      <select id="modelSelect">
-        <option value="deepseek-flash">Flash（推荐）</option>
-        <option value="deepseek-v4-pro">Pro</option>
+
+</div>
+
+
+<!-- =====================================================
+     API Key 弹窗
+     ===================================================== -->
+
+<div id="keyModal" class="hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+
+      <h2 id="keyModalTitle">
+        填写你的 DeepSeek API Key
+      </h2>
+
+      <button
+        id="keyCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <p>
+      Key 只保存在你的浏览器里，不会上传到服务器。
+    </p>
+
+    <input
+      type="password"
+      id="keyInput"
+      placeholder="sk-xxxxxxxxxxxxxxxx"
+      autocomplete="off"
+      spellcheck="false"
+    >
+
+    <p
+      id="keyError"
+      class="key-error"
+    ></p>
+
+    <button
+      id="keySubmitBtn"
+      type="button"
+    >
+      开始游戏
+    </button>
+
+    <button
+      id="keyClearBtn"
+      type="button"
+      class="key-clear-btn"
+    >
+      清除 Key
+    </button>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     设置面板
+     ===================================================== -->
+
+<div id="settingsModal" class="hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+
+      <h2>设置</h2>
+
+      <button
+        id="settingsCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <div class="settings-row">
+
+      <span class="settings-label">
+        AI 模型
+      </span>
+
+      <select
+        id="modelSelect"
+        title="选择 AI 模型"
+      >
+        <option value="deepseek-flash">
+          Flash
+        </option>
+
+        <option value="deepseek-v4-pro">
+          Pro
+        </option>
       </select>
-    </section>
-    <section class="s-section">
-      <h3>存档管理</h3>
-      <div id="slotList"></div>
-    </section>
-    <section class="s-section">
-      <h3>导出当前存档</h3>
-      <button id="exportBtn" class="btn-sec">复制到剪贴板</button>
-    </section>
-    <section class="s-section">
-      <h3>导入存档</h3>
-      <textarea id="importArea" placeholder="粘贴存档 JSON……" rows="3"></textarea>
-      <button id="importBtn" class="btn-sec">导入到空槽位</button>
-    </section>
-    <section class="s-section">
-      <h3>API Key</h3>
-      <p id="apiKeyStatus"></p>
-      <div class="btn-row">
-        <button id="changeKeyBtn" class="btn-sec">更换 Key</button>
-        <button id="clearKeyBtn"  class="btn-dng-out">清除 Key</button>
-      </div>
-    </section>
-  </div>
-</aside>
-<!-- ───── 确认 Modal ───── -->
-<div id="cfmOverlay" class="overlay modal-overlay hidden"></div>
-<div id="cfmModal"   class="modal hidden">
-  <div class="modal-inner">
-    <h3 id="cfmTitle"></h3>
-    <p  id="cfmBody"></p>
-    <div class="modal-btns">
-      <button id="cfmCancel" class="btn-sec">取消</button>
-      <button id="cfmOk"     class="btn-dng">确认</button>
+
     </div>
-  </div>
-</div>
-<!-- ───── 文本输入 Modal（改名）───── -->
-<div id="inpOverlay" class="overlay modal-overlay hidden"></div>
-<div id="inpModal"   class="modal hidden">
-  <div class="modal-inner">
-    <h3 id="inpTitle"></h3>
-    <p  id="inpBody"></p>
-    <input id="inpField" type="text" class="text-input" maxlength="20">
-    <div class="modal-btns">
-      <button id="inpCancel" class="btn-sec">取消</button>
-      <button id="inpOk"     class="btn-pri">确认</button>
+
+    <div class="settings-section-label">
+      存档管理
     </div>
+
+    <div
+      id="slotList"
+      class="slot-list"
+    ></div>
+
+    <button
+      id="exportBtn"
+      type="button"
+      class="settings-action-btn"
+    >
+      导出当前存档
+    </button>
+
+    <textarea
+      id="importArea"
+      class="import-area"
+      rows="3"
+      placeholder="粘贴存档 JSON，点下方按钮导入……"
+    ></textarea>
+
+    <button
+      id="importBtn"
+      type="button"
+      class="settings-action-btn"
+    >
+      导入到空槽位
+    </button>
+
+    <button
+      id="changeKeyBtn"
+      type="button"
+      class="settings-action-btn"
+    >
+      更换 API Key
+    </button>
+
   </div>
+
 </div>
-<!-- ───── API Key Modal ───── -->
-<div id="keyOverlay" class="overlay modal-overlay hidden"></div>
-<div id="keyModal"   class="modal hidden">
-  <div class="modal-inner">
-    <h3>输入 API Key</h3>
-    <p>请输入你的 DeepSeek API Key：</p>
-    <input id="keyField" type="password" class="text-input" placeholder="sk-…" autocomplete="off">
-    <div class="modal-btns">
-      <button id="keyCancel" class="btn-sec">取消</button>
-      <button id="keyOk"     class="btn-pri">保存</button>
+
+
+<!-- =====================================================
+     确认弹窗
+     ===================================================== -->
+
+<div id="confirmModal" class="hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+
+      <h2 id="confirmTitle">确认</h2>
+
+      <button
+        id="confirmCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
     </div>
+
+    <p
+      id="confirmBody"
+      class="confirm-body"
+    ></p>
+
+    <div class="confirm-btns">
+
+      <button
+        id="confirmCancelBtn"
+        type="button"
+        class="settings-action-btn"
+      >
+        取消
+      </button>
+
+      <button
+        id="confirmOkBtn"
+        type="button"
+        class="settings-action-btn settings-danger-btn"
+      >
+        确定
+      </button>
+
+    </div>
+
   </div>
+
 </div>
+
+
+<!-- =====================================================
+     改名弹窗
+     ===================================================== -->
+
+<div id="renameModal" class="hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+
+      <h2>改名存档</h2>
+
+      <button
+        id="renameCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <input
+      type="text"
+      id="renameInput"
+      class="rename-input"
+      maxlength="20"
+      placeholder="输入存档名称"
+    >
+
+    <div class="confirm-btns">
+
+      <button
+        id="renameCancelBtn"
+        type="button"
+        class="settings-action-btn"
+      >
+        取消
+      </button>
+
+      <button
+        id="renameOkBtn"
+        type="button"
+        class="settings-action-btn"
+      >
+        确定
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
 <script src="config.js"></script>
 <script src="app.js"></script>
+
 </body>
 </html>

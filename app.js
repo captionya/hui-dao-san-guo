@@ -1,61 +1,80 @@
-'use strict';
+/* =========================================================
+   三国模拟人生 — 前端逻辑（三存档位版）
+   基于原版 V1.4.0 改造，保留原 UI / 滚动 / 锁定逻辑
+   ========================================================= */
 
-// ═══════════════════════════════════════════════════
-// 常量
-// ═══════════════════════════════════════════════════
-const SLOTS_KEY   = 'sanguo_slots';
-const OLD_KEY     = 'sanguo_save';
-const API_KEY_KEY = 'userApiKey';
-const MODEL_KEY   = 'sanguo_model';
-const THEME_KEY   = 'sanguo_theme';
-const SLOT_IDS    = ['1', '2', '3'];
-const API_URL     = '/api/chat';
 
-// ═══════════════════════════════════════════════════
-// 全局状态
-// ═══════════════════════════════════════════════════
-let slotsData    = null;
+/* =========================================================
+   常量与全局状态
+   ========================================================= */
+
+const SLOTS_KEY = "sanguo_slots";
+const OLD_KEY = "sanguo_save";
+const SLOT_IDS = ["1", "2", "3"];
+
+let slotsData = null;        // 三存档位数据
+let currentModel = "deepseek-flash";
+let userApiKey = "";
 let isGenerating = false;
+let chatWindow = null;
+let userInput = null;
 
-// ═══════════════════════════════════════════════════
-// 存档管理
-// ═══════════════════════════════════════════════════
+let pendingConfirm = null;   // 确认弹窗的回调
+let pendingRename = null;    // 改名弹窗的回调
+
+
+/* =========================================================
+   存档管理
+   ========================================================= */
 
 function loadSlots() {
   const raw = localStorage.getItem(SLOTS_KEY);
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.slots && typeof parsed.slots === 'object') {
+      if (parsed && parsed.slots && typeof parsed.slots === "object") {
         slotsData = parsed;
         return;
       }
-    } catch (_) {}
+    } catch (error) {
+      // 忽略，走迁移/重建
+    }
   }
 
-  // 迁移旧存档
+  // 迁移旧单存档
   let migrated = null;
   const oldRaw = localStorage.getItem(OLD_KEY);
   if (oldRaw) {
     try {
       const p = JSON.parse(oldRaw);
-      migrated = Array.isArray(p) ? p
-               : Array.isArray(p?.messages) ? p.messages
-               : null;
-    } catch (_) {}
+      if (Array.isArray(p)) {
+        migrated = p;
+      } else if (p && Array.isArray(p.messages)) {
+        migrated = p.messages;
+      }
+    } catch (error) {
+      // 忽略
+    }
+  }
+
+  // 旧存档若缺 system 提示词，补上
+  if (migrated && !migrated.some(m => m && m.role === "system")) {
+    migrated.unshift({ role: "system", content: SYSTEM_PROMPT });
   }
 
   const now = new Date().toISOString();
   slotsData = {
     version: 2,
-    activeSlot: '1',
+    activeSlot: "1",
     slots: {
-      '1': migrated ? { name: '迁移存档', createdAt: now, updatedAt: now, messages: migrated } : null,
-      '2': null,
-      '3': null
+      "1": migrated ? { name: "迁移存档", createdAt: now, updatedAt: now, messages: migrated } : null,
+      "2": null,
+      "3": null
     }
   };
-  if (migrated) localStorage.removeItem(OLD_KEY);
+  if (migrated) {
+    localStorage.removeItem(OLD_KEY);
+  }
   saveSlots();
 }
 
@@ -64,69 +83,97 @@ function saveSlots() {
 }
 
 function getSlot(id) {
-  return slotsData.slots[id ?? slotsData.activeSlot] ?? null;
+  return slotsData.slots[id || slotsData.activeSlot] || null;
 }
 
-// 判定槽位是否「有效为空」：没有数据，或只有 system 消息（尚未真正开始）
+// 判定槽位是否「有效为空」：没有数据，或只有 system 消息
 function isSlotEmpty(slot) {
-  if (!slot || !Array.isArray(slot.messages)) return true;
-  return slot.messages.every(m => m.role === 'system');
+  if (!slot || !Array.isArray(slot.messages)) {
+    return true;
+  }
+  return slot.messages.every(m => m.role === "system");
+}
+
+function hasAnyGame() {
+  return SLOT_IDS.some(id => !isSlotEmpty(slotsData.slots[id]));
 }
 
 function autoSave() {
   const slot = getSlot();
-  if (!slot) return;
+  if (!slot) {
+    return;
+  }
   slot.updatedAt = new Date().toISOString();
   saveSlots();
 }
 
-// ─── 切换 ───
+
+/* =========================================================
+   存档操作
+   ========================================================= */
+
 function switchSlot(id) {
-  if (isGenerating) return;
-  if (slotsData.activeSlot === id) { closeSettings(); return; }
+  if (isGenerating) {
+    return;
+  }
+  if (slotsData.activeSlot === id) {
+    hideSettingsPanel();
+    return;
+  }
   autoSave();
   slotsData.activeSlot = id;
   saveSlots();
   renderMessages();
   renderSlotList();
   clearInput();
-  closeSettings();
+  hideSettingsPanel();
 }
 
-// ─── 新开一局 ───
 async function newGame() {
-  if (isGenerating) return;
-
+  if (isGenerating) {
+    return;
+  }
   const emptyId = SLOT_IDS.find(id => isSlotEmpty(slotsData.slots[id]));
   if (emptyId) {
-    // A. 有空槽，直接新开
-    autoSave();
-    _initSlot(emptyId);
-    closeSettings();
-    await triggerOpening();
-  } else {
-    // B. 槽满，确认删除存档位1
-    const name1 = slotsData.slots['1']?.name || '未命名存档';
-    confirmModal(
-      '存档位已满',
-      `三个存档位都已使用。新开一局将自动删除第一个存档「${name1}」，此操作不可恢复。确定继续吗？`,
-      '删除并新开',
-      async () => {
-        autoSave();
-        slotsData.slots['1'] = null;
-        _initSlot('1');
-        closeSettings();
-        await triggerOpening();
-      }
-    );
+    await newGameIn(emptyId);
+    return;
   }
+
+  // 槽满：挤占删除存档位1（二次确认）
+  const first = slotsData.slots["1"];
+  const name1 = first ? (first.name || "未命名存档") : "未命名存档";
+  confirmModal(
+    "存档位已满",
+    "三个存档位都已使用。新开一局将自动删除第一个存档「" + name1 + "」，此操作不可恢复。确定继续吗？",
+    "删除并新开",
+    async function () {
+      slotsData.slots["1"] = null;
+      saveSlots();
+      await newGameIn("1");
+    }
+  );
+}
+
+async function newGameIn(id) {
+  if (isGenerating) {
+    return;
+  }
+  if (!isSlotEmpty(slotsData.slots[id])) {
+    return;
+  }
+  autoSave();
+  _initSlot(id);
+  hideSettingsPanel();
+  await requestAssistant();
 }
 
 function _initSlot(id) {
   const now = new Date().toISOString();
   slotsData.slots[id] = {
-    name: '', createdAt: now, updatedAt: now,
-    messages: [{ role: 'system', content: SYSTEM_PROMPT }]
+    name: "",
+    createdAt: now,
+    updatedAt: now,
+    messages: [{ role: "system", content: SYSTEM_PROMPT }]
   };
   slotsData.activeSlot = id;
   saveSlots();
@@ -135,18 +182,20 @@ function _initSlot(id) {
   clearInput();
 }
 
-// ─── 删除 ───
 function deleteSlot(id) {
-  if (isGenerating) return;
-  const name = slotsData.slots[id]?.name || '未命名存档';
+  if (isGenerating) {
+    return;
+  }
+  const slot = slotsData.slots[id];
+  const name = slot ? (slot.name || "未命名存档") : "未命名存档";
   confirmModal(
-    '删除存档',
-    `确定要删除「${name}」吗？此操作不可恢复。`,
-    '删除',
-    () => {
+    "删除存档",
+    "确定要删除「" + name + "」吗？此操作不可恢复。",
+    "删除",
+    function () {
       slotsData.slots[id] = null;
       if (slotsData.activeSlot === id) {
-        slotsData.activeSlot = SLOT_IDS.find(i => !isSlotEmpty(slotsData.slots[i])) || '1';
+        slotsData.activeSlot = SLOT_IDS.find(i => !isSlotEmpty(slotsData.slots[i])) || "1";
       }
       saveSlots();
       renderMessages();
@@ -155,605 +204,732 @@ function deleteSlot(id) {
   );
 }
 
-// ─── 改名 ───
 function renameSlot(id) {
-  if (isGenerating) return;
-  inputModal(
-    '改名存档',
-    '输入新名称（最多 20 字）：',
-    slotsData.slots[id]?.name || '',
-    name => {
-      slotsData.slots[id].name = name.trim().slice(0, 20);
-      saveSlots();
-      renderSlotList();
-    }
-  );
+  if (isGenerating) {
+    return;
+  }
+  const slot = slotsData.slots[id];
+  if (!slot) {
+    return;
+  }
+  showRenameModal(slot.name || "", function (name) {
+    slot.name = name.trim().slice(0, 20);
+    saveSlots();
+    renderSlotList();
+  });
 }
 
-// ─── 导出 ───
 function exportSlot() {
   const slot = getSlot();
-  if (isSlotEmpty(slot)) { showToast('当前没有存档'); return; }
-
-  const payload = JSON.stringify({
-    version:    2,
+  if (isSlotEmpty(slot)) {
+    alert("当前没有存档");
+    return;
+  }
+  const exportData = {
+    version: 2,
     exportedAt: new Date().toISOString(),
-    name:       slot.name || '未命名存档',
-    model:      localStorage.getItem(MODEL_KEY) || DEFAULT_MODEL,
-    messages:   slot.messages
-      .filter(m => !m._hidden)
-      .map(({ role, content }) => ({ role, content }))
-  }, null, 2);
-
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(payload)
-      .then(()  => showToast('存档已复制到剪贴板'))
-      .catch(() => _fallbackCopy(payload));
+    name: slot.name || "未命名存档",
+    model: currentModel,
+    messages: slot.messages
+  };
+  const text = JSON.stringify(exportData, null, 2);
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    navigator.clipboard.writeText(text)
+      .then(function () { alert("存档已复制到剪贴板"); })
+      .catch(function () { window.prompt("请手动复制以下存档内容：", text); });
   } else {
-    _fallbackCopy(payload);
+    window.prompt("请手动复制以下存档内容：", text);
   }
 }
 
-function _fallbackCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  Object.assign(ta.style, { position: 'fixed', opacity: '0' });
-  document.body.appendChild(ta);
-  ta.select();
-  try { document.execCommand('copy'); showToast('存档已复制到剪贴板'); }
-  catch (_) { showToast('复制失败，请手动选取'); }
-  ta.remove();
-}
-
-// ─── 导入 ───
 function importSlot() {
-  const text = document.getElementById('importArea').value.trim();
-  if (!text) { showToast('请先粘贴存档 JSON'); return; }
-
+  const area = document.getElementById("importArea");
+  const text = area.value.trim();
+  if (!text) {
+    alert("请先粘贴存档 JSON");
+    return;
+  }
   const emptyId = SLOT_IDS.find(id => isSlotEmpty(slotsData.slots[id]));
-  if (!emptyId) { showToast('存档位已满，请先删除一个存档'); return; }
-
+  if (!emptyId) {
+    alert("存档位已满，请先删除一个存档");
+    return;
+  }
   let parsed;
-  try { parsed = JSON.parse(text); }
-  catch (_) { showToast('JSON 格式错误，请检查后重试'); return; }
-
-  if (!Array.isArray(parsed?.messages) || !parsed.messages.length) {
-    showToast('存档格式无效，缺少 messages 字段'); return;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    alert("JSON 格式错误，请检查后重试");
+    return;
   }
-  if (!parsed.messages.every(m => m.role && typeof m.content === 'string')) {
-    showToast('消息格式有误，导入失败'); return;
+  if (!parsed || !Array.isArray(parsed.messages) || parsed.messages.length === 0) {
+    alert("存档格式无效，缺少 messages 字段");
+    return;
   }
-
-  // 若缺少 system 提示词，自动补上，避免 AI 失去游戏规则
-  if (!parsed.messages.some(m => m.role === 'system')) {
-    parsed.messages.unshift({ role: 'system', content: SYSTEM_PROMPT });
+  if (!parsed.messages.every(m => m && m.role && typeof m.content === "string")) {
+    alert("消息格式有误，导入失败");
+    return;
   }
-
+  if (!parsed.messages.some(m => m.role === "system")) {
+    parsed.messages.unshift({ role: "system", content: SYSTEM_PROMPT });
+  }
   const now = new Date().toISOString();
   slotsData.slots[emptyId] = {
-    name:      parsed.name   || '导入存档',
+    name: parsed.name || "导入存档",
     createdAt: parsed.exportedAt || now,
     updatedAt: now,
-    messages:  parsed.messages
+    messages: parsed.messages
   };
   saveSlots();
   renderSlotList();
-  document.getElementById('importArea').value = '';
-  showToast(`已导入到存档位 ${emptyId}`);
+  area.value = "";
+  alert("已导入到存档位 " + emptyId);
 }
 
-// ═══════════════════════════════════════════════════
-// 通用 Modal
-// ═══════════════════════════════════════════════════
 
-function confirmModal(title, body, confirmText, onConfirm) {
-  _showModal('cfmOverlay', 'cfmModal');
-  document.getElementById('cfmTitle').textContent = title;
-  document.getElementById('cfmBody').textContent  = body;
-  document.getElementById('cfmOk').textContent    = confirmText;
-
-  const cancel  = document.getElementById('cfmCancel');
-  const ok      = document.getElementById('cfmOk');
-  const overlay = document.getElementById('cfmOverlay');
-
-  const close = () => {
-    _hideModal('cfmOverlay', 'cfmModal');
-    cancel.removeEventListener('click', close);
-    ok.removeEventListener('click', go);
-    overlay.removeEventListener('click', close);
-  };
-  const go = () => { close(); onConfirm(); };
-
-  cancel.addEventListener('click', close);
-  ok.addEventListener('click', go);
-  overlay.addEventListener('click', close);
-}
-
-function inputModal(title, promptText, currentValue, onConfirm) {
-  _showModal('inpOverlay', 'inpModal');
-  document.getElementById('inpTitle').textContent = title;
-  document.getElementById('inpBody').textContent  = promptText;
-  const field = document.getElementById('inpField');
-  field.value = currentValue || '';
-  setTimeout(() => { field.focus(); field.select(); }, 80);
-
-  const cancel  = document.getElementById('inpCancel');
-  const ok      = document.getElementById('inpOk');
-  const overlay = document.getElementById('inpOverlay');
-
-  const close = () => {
-    _hideModal('inpOverlay', 'inpModal');
-    cancel.removeEventListener('click', close);
-    ok.removeEventListener('click', go);
-    overlay.removeEventListener('click', close);
-    field.removeEventListener('keydown', onKey);
-  };
-  const go = () => { const v = field.value.trim(); if (!v) return; close(); onConfirm(v); };
-  const onKey = e => { if (e.key === 'Enter') go(); if (e.key === 'Escape') close(); };
-
-  cancel.addEventListener('click', close);
-  ok.addEventListener('click', go);
-  overlay.addEventListener('click', close);
-  field.addEventListener('keydown', onKey);
-}
-
-function apiKeyModal(onSave) {
-  _showModal('keyOverlay', 'keyModal');
-  const field   = document.getElementById('keyField');
-  field.value   = '';
-  setTimeout(() => field.focus(), 80);
-
-  const cancel  = document.getElementById('keyCancel');
-  const ok      = document.getElementById('keyOk');
-  const overlay = document.getElementById('keyOverlay');
-
-  const close = () => {
-    _hideModal('keyOverlay', 'keyModal');
-    cancel.removeEventListener('click', close);
-    ok.removeEventListener('click', save);
-    overlay.removeEventListener('click', close);
-    field.removeEventListener('keydown', onKey);
-  };
-  const save = () => {
-    const v = field.value.trim();
-    if (!v) return;
-    localStorage.setItem(API_KEY_KEY, v);
-    close();
-    updateApiKeyStatus();
-    if (onSave) onSave();
-  };
-  const onKey = e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') close(); };
-
-  cancel.addEventListener('click', close);
-  ok.addEventListener('click', save);
-  overlay.addEventListener('click', close);
-  field.addEventListener('keydown', onKey);
-}
-
-function _showModal(ovId, modalId) {
-  document.getElementById(ovId).classList.remove('hidden');
-  document.getElementById(modalId).classList.remove('hidden');
-}
-function _hideModal(ovId, modalId) {
-  document.getElementById(ovId).classList.add('hidden');
-  document.getElementById(modalId).classList.add('hidden');
-}
-
-// ═══════════════════════════════════════════════════
-// 渲染
-// ═══════════════════════════════════════════════════
-
-function renderMessages() {
-  const container = document.getElementById('messages');
-  container.innerHTML = '';
-
-  const slot = getSlot();
-  if (isSlotEmpty(slot)) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>尚无进行中的游戏</p>
-        <p>点击「新开一局」开始冒险</p>
-      </div>`;
-    return;
-  }
-
-  slot.messages.forEach(msg => {
-    if (msg.role === 'system') return;
-    if (msg._hidden)           return;
-    _appendMsgEl(msg.role, msg.content);
-  });
-  scrollBottom();
-}
-
-function _appendMsgEl(role, content) {
-  const container = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = `message ${role}`;
-
-  if (role === 'assistant') {
-    const html = content
-      .split(/\n{2,}/)
-      .filter(p => p.trim())
-      .map(p => `<p>${_esc(p).replace(/\n/g, '<br>')}</p>`)
-      .join('');
-    div.innerHTML = html || `<p>${_esc(content)}</p>`;
-  } else {
-    div.innerHTML = `<p>${_esc(content)}</p>`;
-  }
-
-  container.appendChild(div);
-  scrollBottom();
-  return div;
-}
-
-function _esc(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function scrollBottom() {
-  const el = document.getElementById('chatArea');
-  el.scrollTop = el.scrollHeight;
-}
-
-function clearInput() {
-  const el = document.getElementById('userInput');
-  if (el) { el.value = ''; el.style.height = 'auto'; }
-}
+/* =========================================================
+   存档列表渲染
+   ========================================================= */
 
 function renderSlotList() {
-  const container = document.getElementById('slotList');
-  container.innerHTML = '';
+  const container = document.getElementById("slotList");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = "";
 
-  SLOT_IDS.forEach(id => {
-    const slot     = slotsData.slots[id];
+  SLOT_IDS.forEach(function (id) {
+    const slot = slotsData.slots[id];
     const isActive = slotsData.activeSlot === id;
-    const isEmpty  = isSlotEmpty(slot);
-    const card     = document.createElement('div');
-    card.className = `slot-card${isActive ? ' active' : ''}${isEmpty ? ' empty' : ''}`;
+    const isEmpty = isSlotEmpty(slot);
+
+    const card = document.createElement("div");
+    card.className = "slot-card" + (isActive ? " active" : "") + (isEmpty ? " empty" : "");
 
     if (isEmpty) {
-      card.innerHTML = `
-        <div class="slot-id-label">存档位 ${id}</div>
-        <span class="slot-empty-label">空</span>`;
-    } else {
-      const name    = slot.name || '未命名存档';
-      const turns   = slot.messages.filter(m => m.role === 'assistant').length;
-      const timeStr = _relTime(slot.updatedAt);
-      const lastAst = slot.messages.filter(m => m.role === 'assistant').at(-1);
-      const preview = lastAst
-        ? (lastAst.content.replace(/\n/g, ' ').slice(0, 20) + (lastAst.content.length > 20 ? '…' : ''))
-        : '—';
+      const label = document.createElement("div");
+      label.className = "slot-id-label";
+      label.textContent = "存档位 " + id;
 
-      card.innerHTML = `
-        <div class="slot-id-label">存档位 ${id}</div>
-        <div class="slot-title">
-          <span class="slot-name">${_esc(name)}</span>
-          ${isActive ? '<span class="slot-badge">当前</span>' : ''}
-        </div>
-        <div class="slot-meta">${turns} 轮 · ${timeStr}</div>
-        <div class="slot-summary">${_esc(preview)}</div>
-        <div class="slot-actions">
-          ${!isActive ? `<button class="btn-text" data-action="switch" data-id="${id}">切换</button>` : ''}
-          <button class="btn-text" data-action="rename" data-id="${id}">改名</button>
-          <button class="btn-text danger" data-action="delete" data-id="${id}">删除</button>
-        </div>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "slot-empty-action";
+      btn.textContent = "＋ 新开一局";
+      btn.dataset.action = "new";
+      btn.dataset.id = id;
+
+      card.appendChild(label);
+      card.appendChild(btn);
+    } else {
+      const name = slot.name || "未命名存档";
+      const turns = slot.messages.filter(m => m.role === "assistant").length;
+      const timeStr = relTime(slot.updatedAt);
+      const lastAst = slot.messages.filter(m => m.role === "assistant").pop();
+      const preview = lastAst
+        ? (lastAst.content.replace(/\n/g, " ").slice(0, 20) + (lastAst.content.length > 20 ? "…" : ""))
+        : "—";
+
+      card.innerHTML =
+        '<div class="slot-id-label">存档位 ' + id + '</div>' +
+        '<div class="slot-title"><span class="slot-name"></span>' +
+        (isActive ? '<span class="slot-badge">当前</span>' : '') +
+        '</div>' +
+        '<div class="slot-meta"></div>' +
+        '<div class="slot-summary"></div>' +
+        '<div class="slot-actions"></div>';
+
+      card.querySelector(".slot-name").textContent = name;
+      card.querySelector(".slot-meta").textContent = turns + " 轮 · " + timeStr;
+      card.querySelector(".slot-summary").textContent = preview;
+
+      const actions = card.querySelector(".slot-actions");
+
+      if (!isActive) {
+        const sw = document.createElement("button");
+        sw.type = "button";
+        sw.textContent = "切换";
+        sw.dataset.action = "switch";
+        sw.dataset.id = id;
+        actions.appendChild(sw);
+      }
+
+      const rn = document.createElement("button");
+      rn.type = "button";
+      rn.textContent = "改名";
+      rn.dataset.action = "rename";
+      rn.dataset.id = id;
+      actions.appendChild(rn);
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "删除";
+      del.className = "danger";
+      del.dataset.action = "delete";
+      del.dataset.id = id;
+      actions.appendChild(del);
     }
+
     container.appendChild(card);
   });
 }
 
-function _relTime(iso) {
-  if (!iso) return '';
+function relTime(iso) {
+  if (!iso) {
+    return "";
+  }
   try {
     const diff = (Date.now() - new Date(iso)) / 1000;
-    if (diff < 60)       return '刚刚';
-    if (diff < 3600)     return `${Math.floor(diff / 60)} 分钟前`;
-    if (diff < 86400)    return `${Math.floor(diff / 3600)} 小时前`;
-    if (diff < 86400 * 30) return `${Math.floor(diff / 86400)} 天前`;
-    return new Date(iso).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-  } catch (_) { return ''; }
-}
-
-function updateApiKeyStatus() {
-  const key = localStorage.getItem(API_KEY_KEY);
-  const el  = document.getElementById('apiKeyStatus');
-  if (!el) return;
-  if (key) {
-    el.textContent = `已保存（…${key.slice(-4)}）`;
-    el.style.color = '';
-  } else {
-    el.textContent = '未设置';
-    el.style.color = 'var(--danger)';
+    if (diff < 60) {
+      return "刚刚";
+    }
+    if (diff < 3600) {
+      return Math.floor(diff / 60) + " 分钟前";
+    }
+    if (diff < 86400) {
+      return Math.floor(diff / 3600) + " 小时前";
+    }
+    if (diff < 86400 * 30) {
+      return Math.floor(diff / 86400) + " 天前";
+    }
+    return new Date(iso).toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+  } catch (e) {
+    return "";
   }
 }
 
-function showToast(msg) {
-  document.getElementById('toast')?.remove();
-  const t = document.createElement('div');
-  t.id = 'toast'; t.className = 'toast'; t.textContent = msg;
-  document.body.appendChild(t);
-  requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('show')));
-  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2500);
+
+/* =========================================================
+   通用弹窗
+   ========================================================= */
+
+function confirmModal(title, body, confirmText, onConfirm) {
+  document.getElementById("confirmTitle").textContent = title;
+  document.getElementById("confirmBody").textContent = body;
+  document.getElementById("confirmOkBtn").textContent = confirmText;
+  document.getElementById("confirmModal").classList.remove("hidden");
+  pendingConfirm = onConfirm;
 }
 
-// ═══════════════════════════════════════════════════
-// 设置面板
-// ═══════════════════════════════════════════════════
-
-function openSettings() {
-  renderSlotList();
-  updateApiKeyStatus();
-  const panel = document.getElementById('settingsPanel');
-  panel.classList.remove('hidden');
-  document.getElementById('settingsOverlay').classList.remove('hidden');
-  requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.add('open')));
+function hideConfirmModal() {
+  document.getElementById("confirmModal").classList.add("hidden");
+  pendingConfirm = null;
 }
 
-function closeSettings() {
-  const panel = document.getElementById('settingsPanel');
-  panel.classList.remove('open');
-  document.getElementById('settingsOverlay').classList.add('hidden');
-  setTimeout(() => panel.classList.add('hidden'), 320);
+function showRenameModal(value, onConfirm) {
+  document.getElementById("renameInput").value = value || "";
+  document.getElementById("renameModal").classList.remove("hidden");
+  pendingRename = onConfirm;
+  document.getElementById("renameInput").focus();
 }
 
-// ═══════════════════════════════════════════════════
-// 主题
-// ═══════════════════════════════════════════════════
+function hideRenameModal() {
+  document.getElementById("renameModal").classList.add("hidden");
+  pendingRename = null;
+}
 
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('themeBtn').textContent =
-    theme === 'dark' ? '日间模式' : '暗色模式';
+
+/* =========================================================
+   主题
+   ========================================================= */
+
+function loadTheme() {
+  const theme = localStorage.getItem("sanguo_theme");
+  if (theme === "day" || theme === "scroll") {
+    document.body.classList.add("theme-day");
+  }
+  updateThemeButton();
+}
+
+function updateThemeButton() {
+  const button = document.getElementById("themeBtn");
+  if (!button) {
+    return;
+  }
+  const isDay = document.body.classList.contains("theme-day");
+  button.textContent = isDay ? "暗色模式" : "日间模式";
 }
 
 function toggleTheme() {
-  const cur  = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  localStorage.setItem(THEME_KEY, next);
-  applyTheme(next);
+  const isDay = document.body.classList.toggle("theme-day");
+  localStorage.setItem("sanguo_theme", isDay ? "day" : "dark");
+  updateThemeButton();
 }
 
-// ═══════════════════════════════════════════════════
-// API & 对话
-// ═══════════════════════════════════════════════════
 
-function setGenerating(flag) {
-  isGenerating = flag;
-  ['themeBtn', 'newGameBtn', 'settingsBtn', 'sendBtn'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.disabled = flag;
-  });
-  const inp = document.getElementById('userInput');
-  if (inp) inp.disabled = flag;
+/* =========================================================
+   模型
+   ========================================================= */
+
+function loadModel() {
+  const saved = localStorage.getItem("sanguo_model");
+  if (saved === "deepseek-flash" || saved === "deepseek-v4-pro") {
+    currentModel = saved;
+  }
+  const select = document.getElementById("modelSelect");
+  if (select) {
+    select.value = currentModel;
+  }
 }
 
-async function sendMessage() {
-  if (isGenerating) return;
-  const inp  = document.getElementById('userInput');
-  const text = inp.value.trim();
-  const content = text.length > 0 ? text : '(继续推进剧情)';
-
-  if (isSlotEmpty(getSlot())) { showToast('请先新开一局'); return; }
-
-  const key = localStorage.getItem(API_KEY_KEY);
-  if (!key) { apiKeyModal(() => sendMessage()); return; }
-
-  const slot = getSlot();
-  slot.messages.push({ role: 'user', content });
-  autoSave();
-  _appendMsgEl('user', content);
-  inp.value = '';
-  inp.style.height = 'auto';
-
-  await _callAI();
-}
-
-async function triggerOpening() {
-  if (!SYSTEM_PROMPT?.trim()) {
-    showToast('请先在 config.js 中设置 SYSTEM_PROMPT');
+function changeModel() {
+  const select = document.getElementById("modelSelect");
+  if (!select) {
     return;
   }
-  const key = localStorage.getItem(API_KEY_KEY);
-  if (!key) { apiKeyModal(triggerOpening); return; }
+  currentModel = select.value;
+  localStorage.setItem("sanguo_model", currentModel);
+}
+
+
+/* =========================================================
+   消息渲染
+   ========================================================= */
+
+function createMessageElement(message) {
+  const div = document.createElement("div");
+  div.className = "msg " + message.role;
+  if (message.role === "user") {
+    div.textContent = "你: " + message.content;
+  } else {
+    div.textContent = message.content;
+  }
+  return div;
+}
+
+function appendMessage(message) {
+  const div = createMessageElement(message);
+  chatWindow.appendChild(div);
+  return div;
+}
+
+function renderMessages() {
+  chatWindow.innerHTML = "";
 
   const slot = getSlot();
-  if (!slot) return;
+  if (isSlotEmpty(slot)) {
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    empty.textContent = "尚无进行中的游戏\n点击「新开一局」开始冒险";
+    chatWindow.appendChild(empty);
+    return;
+  }
 
-  // 插入隐藏开场触发消息（不渲染到 UI）
-  const hidden = { role: 'user', content: OPENING_PROMPT, _hidden: true };
-  slot.messages.push(hidden);
-  autoSave();
+  slot.messages.forEach(function (message) {
+    if (!message || message.role === "system") {
+      return;
+    }
+    appendMessage(message);
+  });
 
-  await _callAI();
-
-  // 开场生成后移除这条隐藏消息，避免后续每轮都带上
-  const i = slot.messages.indexOf(hidden);
-  if (i >= 0) slot.messages.splice(i, 1);
-  saveSlots();
+  chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-async function _callAI() {
-  setGenerating(true);
+function placeNewReplyForReading(assistantDiv) {
+  requestAnimationFrame(function () {
+    if (!assistantDiv) {
+      return;
+    }
+    const top = assistantDiv.offsetTop;
+    chatWindow.scrollTop = Math.max(0, top - 12);
+  });
+}
 
-  const key   = localStorage.getItem(API_KEY_KEY);
-  const model = localStorage.getItem(MODEL_KEY) || DEFAULT_MODEL;
-  const slot  = getSlot();
+function clearInput() {
+  userInput.value = "";
+  resizeInput();
+}
 
-  // 发给 API 的消息去除 _hidden 等额外属性
-  const apiMsgs = slot.messages.map(({ role, content }) => ({ role, content }));
 
-  const typingEl = _showTyping();
+/* =========================================================
+   生成状态
+   ========================================================= */
+
+function setGeneratingState(generating) {
+  isGenerating = generating;
+  const ids = [
+    "sendBtn",
+    "themeBtn",
+    "newGameBtn",
+    "settingsBtn",
+    "exportBtn",
+    "importBtn",
+    "modelSelect",
+    "changeKeyBtn",
+    "keySubmitBtn"
+  ];
+  ids.forEach(function (id) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.disabled = generating;
+    }
+  });
+}
+
+
+/* =========================================================
+   AI 请求
+   ========================================================= */
+
+async function requestAssistant() {
+  if (isGenerating) {
+    return null;
+  }
+
+  setGeneratingState(true);
+
+  const assistantDiv = document.createElement("div");
+  assistantDiv.className = "msg assistant";
+
+  const thinking = document.createElement("span");
+  thinking.className = "thinking";
+  thinking.textContent = "……思考中……";
+  assistantDiv.appendChild(thinking);
+
+  // 若当前显示空状态，先清掉，让开场叙述从顶部开始
+  const emptyState = chatWindow.querySelector(".empty-state");
+  if (emptyState) {
+    chatWindow.innerHTML = "";
+  }
+
+  chatWindow.appendChild(assistantDiv);
+  placeNewReplyForReading(assistantDiv);
+
+  let fullText = "";
 
   try {
-    const res = await fetch(API_URL, {
-      method:  'POST',
+    const response = await fetch("/api/chat", {
+      method: "POST",
       headers: {
-        'Content-Type':   'application/json',
-        'X-User-API-Key': key
+        "Content-Type": "application/json",
+        "X-User-API-Key": userApiKey
       },
-      body: JSON.stringify({ model, messages: apiMsgs })
+      body: JSON.stringify({
+        messages: getSlot().messages,
+        model: currentModel
+      })
     });
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => res.statusText);
-      throw new Error(`${res.status}: ${errText}`);
+    if (!response.ok || !response.body) {
+      let errorInfo = "";
+      try {
+        errorInfo = JSON.stringify(await response.json());
+      } catch (error) {
+        // 忽略解析错误
+      }
+      assistantDiv.textContent = "出错了：" + (errorInfo || "HTTP " + response.status);
+      return null;
     }
 
-    const ct    = res.headers.get('content-type') || '';
-    let   reply = '';
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
 
-    if (ct.includes('text/event-stream')) {
-      // ── 流式 SSE ──
-      typingEl.remove();
-      const msgEl  = _createStreamEl();
-      const reader = res.body.getReader();
-      const dec    = new TextDecoder();
-      let   buf    = '';
+    while (true) {
+      const result = await reader.read();
+      if (result.done) {
+        break;
+      }
+      buffer += decoder.decode(result.value, { stream: true });
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        const lines = buf.split('\n');
-        buf = lines.pop();
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const d = line.slice(6).trim();
-          if (d === '[DONE]') continue;
-          try {
-            const delta = JSON.parse(d).choices?.[0]?.delta?.content ?? '';
-            if (delta) { reply += delta; _updateStreamEl(msgEl, reply); }
-          } catch (_) {}
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) {
+          continue;
+        }
+        const payload = trimmed.slice(5).trim();
+        if (!payload || payload === "[DONE]") {
+          continue;
+        }
+        try {
+          const json = JSON.parse(payload);
+          const delta = json && json.choices && json.choices[0] && json.choices[0].delta;
+          const piece = delta && delta.content;
+          if (typeof piece === "string" && piece.length > 0) {
+            fullText += piece;
+            assistantDiv.textContent = fullText;
+          }
+        } catch (error) {
+          // SSE 片段解析失败，跳过
         }
       }
-    } else {
-      // ── 非流式 JSON ──
-      typingEl.remove();
-      const data = await res.json();
-      reply = data.choices?.[0]?.message?.content ?? data.content ?? '';
-      _appendMsgEl('assistant', reply);
     }
 
-    if (reply) {
-      slot.messages.push({ role: 'assistant', content: reply });
-      autoSave();
-      renderSlotList(); // 刷新摘要/轮数
+    if (!fullText) {
+      fullText = "（未获取到有效回复，请稍后重试。）";
+      assistantDiv.textContent = fullText;
     }
 
-  } catch (err) {
-    typingEl.remove();
-    _appendMsgEl('system-error', `请求失败：${err.message}`);
+    const slot = getSlot();
+    slot.messages.push({ role: "assistant", content: fullText });
+    autoSave();
+    renderSlotList();
+
+    return fullText;
+  } catch (error) {
+    console.error("AI请求失败:", error);
+    assistantDiv.textContent = "网络错误：" + (error && error.message ? error.message : "未知错误");
+    return null;
   } finally {
-    setGenerating(false);
+    setGeneratingState(false);
   }
 }
 
-function _showTyping() {
-  const container = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = 'message assistant typing';
-  div.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
-  container.appendChild(div);
-  scrollBottom();
-  return div;
-}
 
-function _createStreamEl() {
-  const container = document.getElementById('messages');
-  const div = document.createElement('div');
-  div.className = 'message assistant';
-  div.innerHTML = '<p>…</p>';
-  container.appendChild(div);
-  scrollBottom();
-  return div;
-}
+/* =========================================================
+   玩家发送消息
+   ========================================================= */
 
-function _updateStreamEl(el, content) {
-  const html = content
-    .split(/\n{2,}/)
-    .filter(p => p.trim())
-    .map(p => `<p>${_esc(p).replace(/\n/g, '<br>')}</p>`)
-    .join('');
-  el.innerHTML = html || `<p>${_esc(content)}</p>`;
-  scrollBottom();
-}
+async function sendMessage(text) {
+  if (isGenerating) {
+    return;
+  }
 
-// ═══════════════════════════════════════════════════
-// 初始化
-// ═══════════════════════════════════════════════════
+  const content = text.trim().length > 0 ? text.trim() : "(继续推进剧情)";
 
-function init() {
-  loadSlots();
-
-  // 若 activeSlot 指向空槽，修正到第一个有内容的槽
   if (isSlotEmpty(getSlot())) {
-    const first = SLOT_IDS.find(id => !isSlotEmpty(slotsData.slots[id]));
-    if (first) { slotsData.activeSlot = first; saveSlots(); }
+    alert("请先「新开一局」再开始");
+    return;
   }
 
-  // 主题 & 模型
-  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
-  document.getElementById('modelSelect').value =
-    localStorage.getItem(MODEL_KEY) || DEFAULT_MODEL;
+  if (!userApiKey) {
+    showKeyModal(false);
+    return;
+  }
 
+  const userMessage = { role: "user", content: content };
+  getSlot().messages.push(userMessage);
+  appendMessage(userMessage);
+  autoSave();
+
+  await requestAssistant();
+}
+
+
+/* =========================================================
+   输入框自动高度
+   ========================================================= */
+
+function resizeInput() {
+  if (!userInput) {
+    return;
+  }
+  userInput.style.height = "auto";
+  const nextHeight = Math.min(userInput.scrollHeight, 130);
+  userInput.style.height = nextHeight + "px";
+}
+
+
+/* =========================================================
+   设置面板
+   ========================================================= */
+
+function showSettingsPanel() {
+  renderSlotList();
+  document.getElementById("settingsModal").classList.remove("hidden");
+}
+
+function hideSettingsPanel() {
+  document.getElementById("settingsModal").classList.add("hidden");
+}
+
+
+/* =========================================================
+   BYOK — API Key 管理
+   ========================================================= */
+
+function loadApiKey() {
+  const saved = localStorage.getItem("userApiKey");
+  if (saved) {
+    userApiKey = saved;
+  } else {
+    showKeyModal(false);
+  }
+}
+
+function showKeyModal(isSettings) {
+  const modal = document.getElementById("keyModal");
+  const title = document.getElementById("keyModalTitle");
+  const submitBtn = document.getElementById("keySubmitBtn");
+  const clearBtn = document.getElementById("keyClearBtn");
+  const closeBtn = document.getElementById("keyCloseBtn");
+  const errorEl = document.getElementById("keyError");
+  const input = document.getElementById("keyInput");
+
+  if (title) {
+    title.textContent = isSettings ? "更换 API Key" : "填写你的 DeepSeek API Key";
+  }
+  if (submitBtn) {
+    submitBtn.textContent = isSettings ? "保存" : "开始游戏";
+  }
+  if (clearBtn) {
+    clearBtn.style.display = isSettings ? "block" : "none";
+  }
+  if (closeBtn) {
+    closeBtn.style.display = isSettings ? "flex" : "none";
+  }
+  if (errorEl) {
+    errorEl.textContent = "";
+  }
+  if (input) {
+    input.value = "";
+  }
+
+  modal.dataset.settings = isSettings ? "1" : "0";
+  modal.classList.remove("hidden");
+}
+
+function hideKeyModal() {
+  document.getElementById("keyModal").classList.add("hidden");
+}
+
+function submitApiKey() {
+  const input = document.getElementById("keyInput");
+  const errorEl = document.getElementById("keyError");
+  const modal = document.getElementById("keyModal");
+
+  const key = input ? input.value.trim() : "";
+
+  if (!key.startsWith("sk-")) {
+    if (errorEl) {
+      errorEl.textContent = "Key 格式不正确，应以 sk- 开头";
+    }
+    return;
+  }
+
+  const wasFirstTime = modal.dataset.settings !== "1";
+
+  userApiKey = key;
+  localStorage.setItem("userApiKey", key);
+  hideKeyModal();
+
+  if (wasFirstTime && !hasAnyGame()) {
+    newGame();
+  }
+}
+
+function clearApiKey() {
+  userApiKey = "";
+  localStorage.removeItem("userApiKey");
+  showKeyModal(false);
+}
+
+
+/* =========================================================
+   页面启动
+   ========================================================= */
+
+window.addEventListener("load", function () {
+  chatWindow = document.getElementById("chatWindow");
+  userInput = document.getElementById("userInput");
+
+  loadTheme();
+  loadModel();
+  loadSlots();
   renderMessages();
 
-  // ── 工具栏 ──
-  document.getElementById('themeBtn').addEventListener('click', toggleTheme);
-  document.getElementById('newGameBtn').addEventListener('click', newGame);
-  document.getElementById('settingsBtn').addEventListener('click', openSettings);
+  /* ---- 工具栏 ---- */
+  document.getElementById("themeBtn").addEventListener("click", toggleTheme);
+  document.getElementById("newGameBtn").addEventListener("click", newGame);
+  document.getElementById("settingsBtn").addEventListener("click", showSettingsPanel);
 
-  // ── 设置面板 ──
-  document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
-  document.getElementById('settingsOverlay').addEventListener('click', closeSettings);
+  /* ---- 设置面板 ---- */
+  document.getElementById("settingsCloseBtn").addEventListener("click", hideSettingsPanel);
+  document.getElementById("modelSelect").addEventListener("change", changeModel);
+  document.getElementById("exportBtn").addEventListener("click", exportSlot);
+  document.getElementById("importBtn").addEventListener("click", importSlot);
 
-  // 存档卡片事件委托（只绑一次）
-  document.getElementById('slotList').addEventListener('click', e => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const { action, id } = btn.dataset;
-    if (action === 'switch') switchSlot(id);
-    if (action === 'rename') renameSlot(id);
-    if (action === 'delete') deleteSlot(id);
+  /* ---- 存档卡片事件委托 ---- */
+  document.getElementById("slotList").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) {
+      return;
+    }
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if (action === "switch") {
+      switchSlot(id);
+    } else if (action === "rename") {
+      renameSlot(id);
+    } else if (action === "delete") {
+      deleteSlot(id);
+    } else if (action === "new") {
+      newGameIn(id);
+    }
   });
 
-  // ── 模型 ──
-  document.getElementById('modelSelect').addEventListener('change', e => {
-    localStorage.setItem(MODEL_KEY, e.target.value);
+  /* ---- 确认弹窗 ---- */
+  document.getElementById("confirmOkBtn").addEventListener("click", function () {
+    const cb = pendingConfirm;
+    hideConfirmModal();
+    if (cb) {
+      cb();
+    }
+  });
+  document.getElementById("confirmCancelBtn").addEventListener("click", hideConfirmModal);
+  document.getElementById("confirmCloseBtn").addEventListener("click", hideConfirmModal);
+
+  /* ---- 改名弹窗 ---- */
+  document.getElementById("renameOkBtn").addEventListener("click", function () {
+    const v = document.getElementById("renameInput").value.trim();
+    if (!v) {
+      return;
+    }
+    const cb = pendingRename;
+    hideRenameModal();
+    if (cb) {
+      cb(v);
+    }
+  });
+  document.getElementById("renameCancelBtn").addEventListener("click", hideRenameModal);
+  document.getElementById("renameCloseBtn").addEventListener("click", hideRenameModal);
+  document.getElementById("renameInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      document.getElementById("renameOkBtn").click();
+    }
   });
 
-  // ── 导出/导入 ──
-  document.getElementById('exportBtn').addEventListener('click', exportSlot);
-  document.getElementById('importBtn').addEventListener('click', importSlot);
-
-  // ── API Key ──
-  document.getElementById('changeKeyBtn').addEventListener('click', () => {
-    closeSettings();
-    apiKeyModal(() => openSettings());
+  /* ---- 发送 ---- */
+  document.getElementById("sendBtn").addEventListener("click", async function () {
+    if (isGenerating) {
+      return;
+    }
+    const text = userInput.value;
+    userInput.value = "";
+    resizeInput();
+    await sendMessage(text);
   });
-  document.getElementById('clearKeyBtn').addEventListener('click', () => {
-    confirmModal(
-      '清除 API Key',
-      '确定要清除已保存的 DeepSeek API Key 吗？清除后需重新填写才能继续游戏。',
-      '清除',
-      () => {
-        localStorage.removeItem(API_KEY_KEY);
-        updateApiKeyStatus();
-        showToast('API Key 已清除');
+
+  userInput.addEventListener("keydown", async function (event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      if (isGenerating) {
+        return;
       }
-    );
+      const text = userInput.value;
+      userInput.value = "";
+      resizeInput();
+      await sendMessage(text);
+    }
   });
 
-  // ── 发送 ──
-  document.getElementById('sendBtn').addEventListener('click', sendMessage);
-  const inp = document.getElementById('userInput');
-  inp.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-  });
-  inp.addEventListener('input', function () {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-  });
-}
+  userInput.addEventListener("input", resizeInput);
 
-document.addEventListener('DOMContentLoaded', init);
+  /* ---- API Key ---- */
+  document.getElementById("keySubmitBtn").addEventListener("click", submitApiKey);
+  document.getElementById("keyCloseBtn").addEventListener("click", hideKeyModal);
+  document.getElementById("keyInput").addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submitApiKey();
+    }
+  });
+  document.getElementById("keyClearBtn").addEventListener("click", clearApiKey);
+  document.getElementById("changeKeyBtn").addEventListener("click", function () {
+    hideSettingsPanel();
+    showKeyModal(true);
+  });
+
+  loadApiKey();
+});
