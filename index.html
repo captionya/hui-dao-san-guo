@@ -8,7 +8,6 @@
 <link rel="stylesheet" href="style.css">
 </head>
 
-
 <body>
 
 <div id="app">
@@ -44,6 +43,9 @@
 
   </header>
 
+  <!-- 角色状态条：体力 / 伤势 / 年龄 / 回合 / 难度 -->
+  <div id="statusBar" class="hidden"></div>
+
   <main id="chatWindow"></main>
 
   <div id="inputArea">
@@ -68,9 +70,9 @@
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
      API Key 弹窗
-     ===================================================== -->
+     ========================================================= -->
 
 <div id="keyModal" class="hidden">
 
@@ -129,9 +131,9 @@
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
      设置面板
-     ===================================================== -->
+     ========================================================= -->
 
 <div id="settingsModal" class="hidden">
 
@@ -168,6 +170,23 @@
         <option value="deepseek-v4-pro">
           Pro
         </option>
+      </select>
+
+    </div>
+
+    <div class="settings-row">
+
+      <span class="settings-label">
+        难度
+      </span>
+
+      <select
+        id="difficultySelect"
+        title="选择难度：决定死亡的阈值与频率"
+      >
+        <option value="history">史实（会死，但不轻易死）</option>
+        <option value="ironman">铁人（死亡即锁档）</option>
+        <option value="storybook">沙盒（明示才会死）</option>
       </select>
 
     </div>
@@ -217,9 +236,75 @@
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
+     终局面板
+     ========================================================= -->
+
+<div id="endingModal" class="hidden">
+
+  <div class="modal-card ending-card">
+
+    <div class="modal-header">
+
+      <h2 id="endingName">这一生</h2>
+
+      <button
+        id="endingCloseBtn"
+        class="modal-close-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+    <div class="ending-body">
+
+      <div class="ending-row">
+        <span class="ending-label">死因</span>
+        <span id="endingCause"></span>
+      </div>
+
+      <div class="ending-row">
+        <span class="ending-label">生卒</span>
+        <span id="endingYears"></span>
+      </div>
+
+      <div class="ending-epitaph">
+        <span class="ending-label">墓志铭</span>
+        <p id="endingEpitaph"></p>
+      </div>
+
+    </div>
+
+    <div class="ending-actions">
+
+      <button
+        id="endingLegacyBtn"
+        type="button"
+        class="settings-action-btn"
+      >
+        传承接续（接手他身后的人）
+      </button>
+
+      <button
+        id="endingNewBtn"
+        type="button"
+        class="settings-action-btn settings-danger-btn"
+      >
+        新开一局
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =========================================================
      确认弹窗
-     ===================================================== -->
+     ========================================================= -->
 
 <div id="confirmModal" class="hidden">
 
@@ -269,9 +354,9 @@
 </div>
 
 
-<!-- =====================================================
+<!-- =========================================================
      改名弹窗
-     ===================================================== -->
+     ========================================================= -->
 
 <div id="renameModal" class="hidden">
 
@@ -325,6 +410,7 @@
 
 
 <script src="config.js"></script>
+<script src="engine.js"></script>
 <script src="app.js"></script>
 
 </body>

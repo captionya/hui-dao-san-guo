@@ -1113,3 +1113,140 @@ body.theme-day #userInput {
   margin-top: 4px;
 }
 
+/* =========================================================
+   角色状态条（v2 · 死亡架构）
+   ========================================================= */
+
+#statusBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 30px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+#statusBar.hidden {
+  display: none;
+}
+
+.st-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.st-sep {
+  opacity: 0.5;
+}
+
+.st-hp {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(128, 128, 128, 0.28);
+  overflow: hidden;
+}
+
+.st-hp i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  display: block;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+.st-injury {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 11px;
+}
+
+.st-injury.lv0 { color: var(--muted); }
+.st-injury.lv1 { color: #c79a4a; border-color: #6b5a3a; }
+.st-injury.lv2 { color: #d07a3a; border-color: #7a4a25; }
+.st-injury.lv3 { color: #d04a3a; border-color: #7a2a25; }
+.st-injury.dead { color: #9a948c; border-color: #555; }
+
+.st-diff {
+  margin-left: auto;
+  opacity: 0.75;
+}
+
+/* 判定标签 */
+.msg-meta {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.85;
+  letter-spacing: 0.02em;
+}
+
+.msg-meta.lethal {
+  color: #d04a3a;
+}
+
+/* 终局面板 */
+.ending-card {
+  max-width: 520px;
+}
+
+.ending-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 14px;
+}
+
+.ending-row {
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.ending-label {
+  flex: 0 0 48px;
+  color: var(--muted);
+}
+
+.ending-epitaph {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ending-epitaph p {
+  margin: 6px 0 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--accent);
+}
+
+.ending-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 已终存档标记 */
+.slot-badge.dead {
+  background: #6a2f28;
+  color: #f2ddd8;
+}
+
+/* 死亡后禁用的输入框 */
+#userInput:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
